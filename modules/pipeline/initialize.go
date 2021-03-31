@@ -16,6 +16,7 @@ package pipeline
 
 import (
 	"fmt"
+	"github.com/erda-project/erda/modules/pipeline/services/queuemanage"
 	"time"
 
 	"github.com/gorilla/schema"
@@ -119,6 +120,7 @@ func do() (*httpserver.Server, error) {
 	extMarketSvc := extmarketsvc.New(bdl)
 	pipelineCronSvc := pipelinecronsvc.New(dbClient, crondSvc)
 	reportSvc := reportsvc.New(reportsvc.WithDBClient(dbClient))
+	queueManage := queuemanage.New(queuemanage.WithDBClient(dbClient))
 
 	// pipeline engine
 	engine := pipengine.New(dbClient)
@@ -162,6 +164,7 @@ func do() (*httpserver.Server, error) {
 		endpoints.WithPipelineSvc(pipelineSvc),
 		endpoints.WithSnippetSvc(snippetSvc),
 		endpoints.WithReportSvc(reportSvc),
+		endpoints.WithQueueManage(queueManage),
 		endpoints.WithReconciler(r),
 	)
 
