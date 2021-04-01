@@ -127,7 +127,7 @@ func do() (*httpserver.Server, error) {
 
 	// init services
 	pipelineSvc := pipelinesvc.New(appSvc, cmSvc, crondSvc, actionAgentSvc, extMarketSvc, pipelineCronSvc,
-		permissionSvc, dbClient, bdl, publisher, engine, js, etcdctl)
+		permissionSvc, queueManage, dbClient, bdl, publisher, engine, js, etcdctl)
 
 	pipelineFun := &reconciler.PipelineSvcFunc{
 		CronNotExecuteCompensate: pipelineSvc.CronNotExecuteCompensateById,

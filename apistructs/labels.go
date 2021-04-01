@@ -38,6 +38,9 @@ const (
 	LabelPipelineCronID          = "pipelineCronID"
 	LabelPipelineCronCompensated = "cronCompensated"
 
+	LabelBindPipelineQueueID   = "__bind_queue_id"
+	LabelBindPipelineQueueName = "__bind_queue_name"
+
 	LabelUserID = "userID"
 
 	// ---------------------- snippet some global labels
