@@ -16,6 +16,7 @@ package spec
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"strconv"
 
 	"github.com/erda-project/erda/apistructs"
@@ -233,4 +234,21 @@ func (p *Pipeline) GetResourceGCTTL() uint64 {
 		resourceGCTTL = *p.Extra.GC.ResourceGC.SuccessTTLSecond
 	}
 	return resourceGCTTL
+}
+
+// GetPipelineQueueID return pipeline queue id if exist, or 0.
+func (p *Pipeline) GetPipelineQueueID() (uint64, bool) {
+	if p.Labels == nil {
+		return 0, false
+	}
+	queueIDStr, ok := p.Labels[apistructs.LabelBindPipelineQueueID]
+	if !ok {
+		return 0, false
+	}
+	queueID, err := strconv.ParseUint(queueIDStr, 10, 64)
+	if err != nil {
+		logrus.Errorf("failed to get pipeline queueID, queueIDStr: %s, err: %v", queueIDStr, err)
+		return 0, false
+	}
+	return queueID, true
 }

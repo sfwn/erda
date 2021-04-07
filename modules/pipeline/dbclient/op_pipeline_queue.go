@@ -15,11 +15,12 @@ import (
 const (
 	queueLabelKeyID               string = "__queue_id"
 	queueLabelKeyName             string = "__queue_name"
-	queueLabelKeyMaxCPU           string = "__queue_max_cpu"
-	queueLabelKeyMaxMemoryMB      string = "__queue_max_memory_MB"
 	queueLabelKeyClusterName      string = "__queue_cluster_name"
 	queueLabelKeyScheduleStrategy string = "__queue_schedule_strategy"
 	queueLabelKeyPriority         string = "__queue_priority"
+	queueLabelKeyConcurrency      string = "__queue_concurrency"
+	queueLabelKeyMaxCPU           string = "__queue_max_cpu"
+	queueLabelKeyMaxMemoryMB      string = "__queue_max_memory_MB"
 )
 
 // CreatePipelineQueue
@@ -66,6 +67,7 @@ func (client *Client) createPipelineQueueFields(req apistructs.PipelineQueueCrea
 	clusterNameLabel := genMetaLabelFunc(queueID, req.PipelineSource, queueLabelKeyClusterName, req.ClusterName)
 	scheduleStrategyLabel := genMetaLabelFunc(queueID, req.PipelineSource, queueLabelKeyScheduleStrategy, req.ScheduleStrategy.String())
 	priorityLabel := genMetaLabelFunc(queueID, req.PipelineSource, queueLabelKeyPriority, strutil.String(req.Priority))
+	concurrencyLabel := genMetaLabelFunc(queueID, req.PipelineSource, queueLabelKeyConcurrency, strutil.String(req.Concurrency))
 	maxCPULabel := genMetaLabelFunc(queueID, req.PipelineSource, queueLabelKeyMaxCPU, strutil.String(req.MaxCPU))
 	maxMemoryMBLabel := genMetaLabelFunc(queueID, req.PipelineSource, queueLabelKeyMaxMemoryMB, strutil.String(req.MaxMemoryMB))
 	queueMetaLabels := []spec.PipelineLabel{
@@ -73,6 +75,7 @@ func (client *Client) createPipelineQueueFields(req apistructs.PipelineQueueCrea
 		clusterNameLabel,
 		scheduleStrategyLabel,
 		priorityLabel,
+		concurrencyLabel,
 		maxCPULabel,
 		maxMemoryMBLabel,
 	}
@@ -130,6 +133,12 @@ func constructQueueByLabels(labels []spec.PipelineLabel) (*apistructs.PipelineQu
 				return nil, fmt.Errorf("failed to construct queue for priority, queueID: %d, value: %s, err: %v", q.ID, label.Value, err)
 			}
 			q.Priority = priority
+		case queueLabelKeyConcurrency:
+			concurrency, err := strconv.ParseInt(label.Value, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("failed to construct queue for concurrency, queueID: %d, value: %s, err: %v", q.ID, label.Value, err)
+			}
+			q.Concurrency = concurrency
 		case queueLabelKeyMaxCPU:
 			maxCPU, err := strconv.ParseFloat(label.Value, 10)
 			if err != nil {
@@ -215,6 +224,10 @@ func transferQueuePagingRequestToMustMatchLabels(req *apistructs.PipelineQueuePa
 	// priority
 	if req.Priority != 0 {
 		req.MustMatchLabels = append(req.MustMatchLabels, genMustMatchLabelFunc(queueLabelKeyPriority, strutil.String(req.Priority)))
+	}
+	// concurrency
+	if req.Concurrency != 0 {
+		req.MustMatchLabels = append(req.MustMatchLabels, genMustMatchLabelFunc(queueLabelKeyConcurrency, strutil.String(req.Concurrency)))
 	}
 }
 
@@ -335,7 +348,7 @@ func (client *Client) DeletePipelineQueue(queueID uint64, ops ...SessionOption) 
 	session := client.NewSession(ops...)
 	defer session.Close()
 
-	_, err := session.ID(queueID).Delete(&spec.PipelineLabel{})
+	_, err := session.Where("target_id = ?", queueID).Delete(&spec.PipelineLabel{})
 	if err != nil {
 		return fmt.Errorf("failed to delete queue, queueID: %d, err: %v", queueID, err)
 	}

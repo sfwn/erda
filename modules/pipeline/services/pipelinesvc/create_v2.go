@@ -290,6 +290,11 @@ func (s *PipelineSvc) makePipelineFromRequestV2(req *apistructs.PipelineCreateRe
 			})
 	}
 
+	// queue
+	if req.BindQueue != nil {
+		p.Extra.QueueID = req.BindQueue.ID
+	}
+
 	return p, nil
 }
 

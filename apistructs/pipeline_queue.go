@@ -7,6 +7,23 @@ import (
 	"github.com/erda-project/erda/pkg/strutil"
 )
 
+type PipelineQueueMode string
+
+func (m PipelineQueueMode) String() string { return string(m) }
+
+var (
+	PipelineQueueModeStrict PipelineQueueMode = "STRICT"
+	PipelineQueueModeLoose  PipelineQueueMode = "LOOSE"
+)
+
+type PipelineQueueLabelKey string
+
+func (k PipelineQueueLabelKey) String() string { return string(k) }
+
+const (
+	PipelineQueueLabelKeyMode PipelineQueueLabelKey = "__queue_mode"
+)
+
 type PipelineQueue struct {
 	ID uint64 `json:"id"`
 
@@ -14,7 +31,9 @@ type PipelineQueue struct {
 	PipelineSource   PipelineSource                      `json:"pipelineSource"`
 	ClusterName      string                              `json:"clusterName"`
 	ScheduleStrategy ScheduleStrategyInsidePipelineQueue `json:"scheduleStrategy"`
+	Mode             PipelineQueueMode                   `json:"mode,omitempty"`
 	Priority         int64                               `json:"priority"`
+	Concurrency      int64                               `json:"concurrency"`
 	MaxCPU           float64                             `json:"maxCPU"`
 	MaxMemoryMB      float64                             `json:"maxMemoryMB"`
 
@@ -47,6 +66,8 @@ func (strategy ScheduleStrategyInsidePipelineQueue) IsValid() bool {
 var (
 	PipelineQueueDefaultPriority         int64 = 10
 	PipelineQueueDefaultScheduleStrategy       = ScheduleStrategyInsidePipelineQueueOfFIFO
+	PipelineQueueDefaultConcurrency      int64 = 1
+	PipelineQueueDefaultMode                   = PipelineQueueModeStrict
 )
 
 // PipelineQueueCreateRequest represents queue create request.
@@ -74,6 +95,11 @@ type PipelineQueueCreateRequest struct {
 	// If not present, will use default priority.
 	// +optional
 	Priority int64 `json:"priority,omitempty"`
+
+	// Concurrency defines how many item can running at the same time.
+	// If not present, will use default concurrency.
+	// +optional
+	Concurrency int64 `json:"concurrency,omitempty"`
 
 	// MaxCPU is the cpu resource this queue holds.
 	MaxCPU float64 `json:"maxCPU,omitempty"`
@@ -116,6 +142,13 @@ func (req *PipelineQueueCreateRequest) Validate() error {
 	if req.Priority < 0 {
 		return fmt.Errorf("priority must > 0")
 	}
+	// concurrency
+	if req.Concurrency == 0 {
+		req.Concurrency = PipelineQueueDefaultConcurrency
+	}
+	if req.Concurrency < 0 {
+		return fmt.Errorf("concurrency must > 0")
+	}
 	// max cpu
 	if req.MaxCPU < 0 {
 		return fmt.Errorf("max cpu must >= 0")
@@ -138,6 +171,8 @@ type PipelineQueuePagingRequest struct {
 	ScheduleStrategy ScheduleStrategyInsidePipelineQueue `schema:"scheduleStrategy"`
 
 	Priority int64 `schema:"priority"`
+
+	Concurrency int64 `schema:"concurrency"`
 
 	// MUST match
 	MustMatchLabels []string `schema:"mustMatchLabel"`

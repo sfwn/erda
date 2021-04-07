@@ -33,18 +33,38 @@ type EnhancedQueue struct {
 	// window 大小可以调整，不影响当前正在处理中的任务
 	// 例如之前 window=2，且有两个任务正在处理中，此时缩小 window=1，不会影响已经在处理中的两个任务
 	processingWindow int64
+	//
+	//// meta holds metadata of the queue.
+	//meta map[string]string
 
 	lock sync.RWMutex
 }
 
-func NewEnhancedQueue(window int64) *EnhancedQueue {
-	return &EnhancedQueue{
+func NewEnhancedQueue(window int64, ops ...Option) *EnhancedQueue {
+	eq := EnhancedQueue{
 		pending:          priorityqueue.NewPriorityQueue(),
 		processing:       priorityqueue.NewPriorityQueue(),
 		processingWindow: window,
 		lock:             sync.RWMutex{},
 	}
+	for _, op := range ops {
+		op(&eq)
+	}
+	return &eq
 }
+
+type Option func(queue *EnhancedQueue)
+
+//func WithMeta(meta map[string]string) Option {
+//	return func(eq *EnhancedQueue) {
+//		if eq.meta == nil {
+//			eq.meta = make(map[string]string)
+//		}
+//		for k, v := range meta {
+//			eq.meta[k] = v
+//		}
+//	}
+//}
 
 func (eq *EnhancedQueue) PendingQueue() *priorityqueue.PriorityQueue {
 	eq.lock.Lock()
@@ -122,6 +142,13 @@ func (eq *EnhancedQueue) PopPending(dryRun ...bool) string {
 	return popped.Key()
 }
 
+func (eq *EnhancedQueue) PopPendingKey(key string, dryRun ...bool) string {
+	eq.lock.Lock()
+	defer eq.lock.Unlock()
+}
+
+func (eq *EnhancedQueue) pop
+
 // PopProcessing 将指定 key 从 processing 队列中移除，表示完成
 func (eq *EnhancedQueue) PopProcessing(key string, dryRun ...bool) string {
 	eq.lock.Lock()
@@ -154,3 +181,27 @@ func (eq *EnhancedQueue) SetProcessingWindow(newWindow int64) {
 
 	eq.processingWindow = newWindow
 }
+
+func (eq *EnhancedQueue) RangePending(f func(priorityqueue.Item) bool) {
+	eq.lock.Lock()
+	defer eq.lock.Unlock()
+
+	eq.pending.Range(f)
+}
+
+//func (eq *EnhancedQueue) Meta() map[string]string {
+//	eq.lock.Lock()
+//	defer eq.lock.Unlock()
+//
+//	return eq.meta
+//}
+//
+//func (eq *EnhancedQueue) GetMetaByKey(key string) string {
+//	eq.lock.Lock()
+//	defer eq.lock.Unlock()
+//
+//	if eq.meta == nil {
+//		return ""
+//	}
+//	return eq.meta[key]
+//}

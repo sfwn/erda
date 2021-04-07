@@ -42,6 +42,12 @@ func (r *Reconciler) Listen() {
 						return
 					}
 
+					// add into queue
+					rlog.PInfof(pipelineID, "add into queue, wait for pop")
+					beginCh := r.QueueManager.AddPipelineToQueue(pipelineID)
+					<-beginCh
+					rlog.PInfof(pipelineID, "pop from queue, begin reconcile")
+
 					// construct context for pipeline reconciler
 					pCtx := makeContextForPipelineReconcile(pipelineID)
 
