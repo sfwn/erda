@@ -16,8 +16,9 @@ package spec
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"strconv"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/conf"
@@ -251,4 +252,9 @@ func (p *Pipeline) GetPipelineQueueID() (uint64, bool) {
 		return 0, false
 	}
 	return queueID, true
+}
+
+// GetPipelineAppliedResources return limited and min resource when pipeline run.
+func (p *Pipeline) GetPipelineAppliedResources() apistructs.PipelineAppliedResources {
+	return apistructs.PipelineAppliedResources{}
 }

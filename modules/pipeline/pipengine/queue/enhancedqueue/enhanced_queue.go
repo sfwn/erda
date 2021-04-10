@@ -14,7 +14,6 @@
 package enhancedqueue
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -33,9 +32,6 @@ type EnhancedQueue struct {
 	// window 大小可以调整，不影响当前正在处理中的任务
 	// 例如之前 window=2，且有两个任务正在处理中，此时缩小 window=1，不会影响已经在处理中的两个任务
 	processingWindow int64
-	//
-	//// meta holds metadata of the queue.
-	//meta map[string]string
 
 	lock sync.RWMutex
 }
@@ -54,17 +50,6 @@ func NewEnhancedQueue(window int64, ops ...Option) *EnhancedQueue {
 }
 
 type Option func(queue *EnhancedQueue)
-
-//func WithMeta(meta map[string]string) Option {
-//	return func(eq *EnhancedQueue) {
-//		if eq.meta == nil {
-//			eq.meta = make(map[string]string)
-//		}
-//		for k, v := range meta {
-//			eq.meta[k] = v
-//		}
-//	}
-//}
 
 func (eq *EnhancedQueue) PendingQueue() *priorityqueue.PriorityQueue {
 	eq.lock.Lock()
@@ -123,6 +108,20 @@ func (eq *EnhancedQueue) PopPending(dryRun ...bool) string {
 	if peeked == nil {
 		return ""
 	}
+
+	return eq.popPendingKeyWithoutLock(peeked.Key(), dryRun...)
+}
+
+// PopPendingKey pop specified key to processing queue.
+func (eq *EnhancedQueue) PopPendingKey(key string, dryRun ...bool) string {
+	eq.lock.Lock()
+	defer eq.lock.Unlock()
+
+	return eq.popPendingKeyWithoutLock(key, dryRun...)
+}
+
+// popPendingKeyWithoutLock pop specified key from pending queue, lock outside.
+func (eq *EnhancedQueue) popPendingKeyWithoutLock(popKey string, dryRun ...bool) string {
 	// 确认窗口大小
 	if int64(eq.processing.Len()) >= eq.processingWindow {
 		return ""
@@ -131,23 +130,16 @@ func (eq *EnhancedQueue) PopPending(dryRun ...bool) string {
 
 	// dryRun
 	if len(dryRun) > 0 && dryRun[0] {
-		return peeked.Key()
+		return popKey
 	}
 	// 真实处理
-	popped := eq.pending.Pop()
-	if peeked.Key() != popped.Key() {
-		panic(fmt.Errorf("should be same, peeked: %s, popped: %s", peeked.Key(), popped.Key()))
+	poppedItem := eq.pending.Remove(popKey)
+	if poppedItem == nil {
+		return ""
 	}
-	eq.processing.Add(popped)
-	return popped.Key()
+	eq.processing.Add(poppedItem)
+	return poppedItem.Key()
 }
-
-func (eq *EnhancedQueue) PopPendingKey(key string, dryRun ...bool) string {
-	eq.lock.Lock()
-	defer eq.lock.Unlock()
-}
-
-func (eq *EnhancedQueue) pop
 
 // PopProcessing 将指定 key 从 processing 队列中移除，表示完成
 func (eq *EnhancedQueue) PopProcessing(key string, dryRun ...bool) string {
@@ -188,20 +180,3 @@ func (eq *EnhancedQueue) RangePending(f func(priorityqueue.Item) bool) {
 
 	eq.pending.Range(f)
 }
-
-//func (eq *EnhancedQueue) Meta() map[string]string {
-//	eq.lock.Lock()
-//	defer eq.lock.Unlock()
-//
-//	return eq.meta
-//}
-//
-//func (eq *EnhancedQueue) GetMetaByKey(key string) string {
-//	eq.lock.Lock()
-//	defer eq.lock.Unlock()
-//
-//	if eq.meta == nil {
-//		return ""
-//	}
-//	return eq.meta[key]
-//}

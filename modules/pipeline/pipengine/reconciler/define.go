@@ -22,7 +22,7 @@ import (
 	"github.com/erda-project/erda/bundle"
 	"github.com/erda-project/erda/modules/pipeline/dbclient"
 	"github.com/erda-project/erda/modules/pipeline/pipengine/queue/throttler"
-	"github.com/erda-project/erda/modules/pipeline/pipengine/reconciler/queue"
+	"github.com/erda-project/erda/modules/pipeline/pipengine/reconciler/queuemanage/types"
 	"github.com/erda-project/erda/modules/pipeline/pipengine/reconciler/rlog"
 	"github.com/erda-project/erda/modules/pipeline/services/actionagentsvc"
 	"github.com/erda-project/erda/modules/pipeline/services/extmarketsvc"
@@ -47,7 +47,7 @@ type Reconciler struct {
 	bdl      *bundle.Bundle
 	dbClient *dbclient.Client
 
-	QueueManager  *queue.Manager
+	QueueManager  types.QueueManager
 	TaskThrottler throttler.Throttler
 
 	// processingTasks store task id which is in processing
@@ -86,6 +86,9 @@ func New(js jsonstore.JsonStore, etcd *etcd.Store, bdl *bundle.Bundle, dbClient 
 		pipelineSvcFunc: pipelineSvcFunc,
 	}
 	if err := r.loadThrottlers(); err != nil {
+		return nil, err
+	}
+	if err := r.loadQueueManger(); err != nil {
 		return nil, err
 	}
 	return &r, nil

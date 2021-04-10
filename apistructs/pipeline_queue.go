@@ -190,13 +190,13 @@ type PipelineQueuePagingRequest struct {
 	PageSize int `schema:"pageSize"`
 }
 
-// PipelineQueuePagingData
+// PipelineQueuePagingData .
 type PipelineQueuePagingData struct {
 	Queues []*PipelineQueue `json:"queues"`
 	Total  int64            `json:"total"`
 }
 
-// PipelineQueueUpdateRequest
+// PipelineQueueUpdateRequest .
 type PipelineQueueUpdateRequest struct {
 	ID uint64 `json:"-"` // get from path variable
 
@@ -216,4 +216,22 @@ func (req *PipelineQueueUpdateRequest) Validate() error {
 	}
 
 	return nil
+}
+
+// PipelineAppliedResources represents multi-kind applied resources.
+type PipelineAppliedResources struct {
+	Limits   *PipelineAppliedResource `json:"limits"`
+	Requests *PipelineAppliedResource `json:"requests"`
+}
+
+// PipelineAppliedResource represents one kind of applied resources.
+type PipelineAppliedResource struct {
+	CPU      float64 `json:"cpu"`
+	MemoryMB float64 `json:"memoryMB"`
+}
+
+// PipelineQueueValidateResult represents queue validate result.
+type PipelineQueueValidateResult struct {
+	Success bool   `json:"success"`
+	Reason  string `json:"reason"`
 }
