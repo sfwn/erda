@@ -220,8 +220,8 @@ func (req *PipelineQueueUpdateRequest) Validate() error {
 
 // PipelineAppliedResources represents multi-kind applied resources.
 type PipelineAppliedResources struct {
-	Limits   *PipelineAppliedResource `json:"limits"`
-	Requests *PipelineAppliedResource `json:"requests"`
+	Limits   PipelineAppliedResource `json:"limits"`
+	Requests PipelineAppliedResource `json:"requests"`
 }
 
 // PipelineAppliedResource represents one kind of applied resources.
@@ -234,4 +234,11 @@ type PipelineAppliedResource struct {
 type PipelineQueueValidateResult struct {
 	Success bool   `json:"success"`
 	Reason  string `json:"reason"`
+}
+
+func (r PipelineQueueValidateResult) IsSuccess() bool {
+	return r.Success
+}
+func (r PipelineQueueValidateResult) IsFailed() bool {
+	return !r.Success
 }

@@ -21,5 +21,6 @@ import (
 var SuccessValidateResult = apistructs.PipelineQueueValidateResult{Success: true}
 
 type QueueValidator interface {
-	Validate(queue Queue, tryPopP *spec.Pipeline) apistructs.PipelineQueueValidateResult
+	ValidateFreeResources(pipelineCaches map[uint64]*spec.Pipeline, tryPop *spec.Pipeline) apistructs.PipelineQueueValidateResult
+	ValidateCapacity(pipelineCaches map[uint64]*spec.Pipeline, tryPop *spec.Pipeline) apistructs.PipelineQueueValidateResult
 }

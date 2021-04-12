@@ -22,7 +22,7 @@ type Queue interface {
 	OccupiedResource() apistructs.PipelineAppliedResource
 	IsStrictMode() bool
 	AddPipelineIntoQueue(p *spec.Pipeline, doneCh chan struct{})
-	Validators(mgr QueueManager) []QueueValidator
 	Update(pq *apistructs.PipelineQueue)
 	RangePendingQueue(mgr QueueManager)
+	QueueValidator
 }

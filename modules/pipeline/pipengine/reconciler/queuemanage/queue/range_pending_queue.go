@@ -23,7 +23,6 @@ import (
 	"github.com/erda-project/erda/modules/pipeline/pipengine/queue/priorityqueue"
 	"github.com/erda-project/erda/modules/pipeline/pipengine/reconciler/queuemanage/types"
 	"github.com/erda-project/erda/modules/pipeline/pipengine/reconciler/rlog"
-	"github.com/erda-project/erda/modules/pipeline/spec"
 )
 
 func (q *defaultQueue) RangePendingQueue(mgr types.QueueManager) {
@@ -53,8 +52,7 @@ func (q *defaultQueue) RangePendingQueue(mgr types.QueueManager) {
 		customKVsOfAOP := map[interface{}]interface{}{}
 		ctx := aop.NewContextForPipeline(*p, aoptypes.TuneTriggerPipelineInQueuePrecheckBeforePop, customKVsOfAOP)
 		_ = aop.Handle(ctx)
-		// TODO get precheck detail from ctx
-		checkResultI, ok := ctx.TryGet("check_result")
+		checkResultI, ok := ctx.TryGet("precheck_result")
 		if !ok {
 			// no result, pop now
 			stopRange = true
@@ -73,36 +71,8 @@ func (q *defaultQueue) RangePendingQueue(mgr types.QueueManager) {
 			// according to queue mode, check next pipeline or skip
 			return q.IsStrictMode()
 		}
-		switch checkResult {
-		case "success":
-			// pop now
-			poppedKey := q.eq.PopPendingKey(item.Key())
-			// cannot pop
-			if poppedKey == "" {
-				stopRange = true
-				return
-			}
-			pipelineID, _ := strconv.ParseUint(item.Key(), 10, 64)
-			ch, ok := q.doneChanByPipelineID[pipelineID]
-			if ok {
-				ch <- struct{}{}
-				close(ch)
-				delete(q.doneChanByPipelineID, pipelineID)
-			}
-		default:
-			// not pop
-			// according to queue mode, check next pipeline or not
-			if q.IsStrictMode() {
-				// strict mode, no need try next
-				stopRange = true
-				return
-			}
-			// loose mode
-			stopRange = false
-			return
-		}
-
-		stopRange = false
+		// do pop
+		stopRange = q.doPop(item)
 		return
 	})
 }
@@ -125,17 +95,4 @@ func (q *defaultQueue) doPop(item priorityqueue.Item) (stopRange bool) {
 	}
 	// according to queue mode, check next pipeline or not
 	return q.IsStrictMode()
-}
-
-// parsePipelineIDFromQueueItem
-// item key is the pipeline id
-func parsePipelineIDFromQueueItem(item priorityqueue.Item) uint64 {
-	pipelineID, err := strconv.ParseUint(item.Key(), 10, 64)
-	rlog.Errorf("failed to parse pipeline id from queue item key, key: %s, err: %v", item.Key(), err)
-	return pipelineID
-}
-
-// makeQueueItemKey
-func makeQueueItemKey(p *spec.Pipeline) string {
-	return strconv.FormatUint(p.ID, 10)
 }

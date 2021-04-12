@@ -36,12 +36,18 @@ type defaultManager struct {
 }
 
 func (mgr *defaultManager) ValidatePipeline(queue types.Queue, p *spec.Pipeline) apistructs.PipelineQueueValidateResult {
-	for _, validator := range queue.Validators(mgr) {
-		result := validator.Validate(queue, p)
-		if !result.Success {
-			return result
-		}
+	// capacity
+	result := queue.ValidateCapacity(mgr.pipelineCaches, p)
+	if result.IsFailed() {
+		return result
 	}
+	// free resources
+	result = queue.ValidateFreeResources(mgr.pipelineCaches, p)
+	if result.IsFailed() {
+		return result
+	}
+
+	// default result
 	return types.SuccessValidateResult
 }
 
