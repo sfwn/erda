@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/erda-project/erda/pkg/strutil"
+	"github.com/erda-project/erda-proto-go/pipeline/pb"
 )
 
 const PipelinePreCheckResultContextKey = "precheck_result"
@@ -85,57 +86,7 @@ var (
 	PipelineQueueDefaultConcurrency      int64 = 1
 )
 
-// PipelineQueueCreateRequest represents queue create request.
-type PipelineQueueCreateRequest struct {
-
-	// Name is the queue name.
-	// +required
-	Name string `json:"name,omitempty"`
-
-	// PipelineSource group queues by source.
-	// +required
-	PipelineSource PipelineSource `json:"pipelineSource,omitempty"`
-
-	// ClusterName represents which cluster this queue belongs to.
-	// +required
-	ClusterName string `json:"clusterName,omitempty"`
-
-	// ScheduleStrategy defines schedule strategy.
-	// If not present, will use default strategy.
-	// +optional
-	ScheduleStrategy ScheduleStrategyInsidePipelineQueue `json:"scheduleStrategy,omitempty"`
-
-	// Mode defines queue mode.
-	// If not present, will use default mode.
-	// +optional
-	Mode PipelineQueueMode `json:"mode,omitempty"`
-
-	// Priority defines item default priority inside queues.
-	// Higher number means higher priority.
-	// If not present, will use default priority.
-	// +optional
-	Priority int64 `json:"priority,omitempty"`
-
-	// Concurrency defines how many item can running at the same time.
-	// If not present, will use default concurrency.
-	// +optional
-	Concurrency int64 `json:"concurrency,omitempty"`
-
-	// MaxCPU is the cpu resource this queue holds.
-	// +optional
-	MaxCPU float64 `json:"maxCPU,omitempty"`
-
-	// MaxMemoryMB is the memory resource this queue holds.
-	// +optional
-	MaxMemoryMB float64 `json:"maxMemoryMB,omitempty"`
-
-	// Labels contains the other infos for this queue.
-	// Labels can be used to query and filter queues.
-	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
-
-	IdentityInfo
-}
+type PipelineQueueCreateRequest pb.QueueCreateRequest
 
 // Validate validate and handle request.
 func (req *PipelineQueueCreateRequest) Validate() error {
