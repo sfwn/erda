@@ -216,13 +216,13 @@ func (p *Pipeline) EnsureGC() {
 		gc.DatabaseGC.Analyzed.NeedArchive = &[]bool{false}[0]
 	}
 	if gc.DatabaseGC.Analyzed.TTLSecond == nil {
-		gc.DatabaseGC.Analyzed.TTLSecond = &[]uint64{60 * 60 * 24}[0]
+		gc.DatabaseGC.Analyzed.TTLSecond = &[]uint64{conf.AnalyzedPipelineDefaultDBGCTTLSec()}[0]
 	}
 	if gc.DatabaseGC.Finished.NeedArchive == nil {
 		gc.DatabaseGC.Finished.NeedArchive = &[]bool{true}[0]
 	}
 	if gc.DatabaseGC.Finished.TTLSecond == nil {
-		gc.DatabaseGC.Finished.TTLSecond = &[]uint64{60 * 60 * 24 * 30 * 2}[0]
+		gc.DatabaseGC.Finished.TTLSecond = &[]uint64{conf.FinishedPipelineDefaultDBGCTTLSec()}[0]
 	}
 }
 
