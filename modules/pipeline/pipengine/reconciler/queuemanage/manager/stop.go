@@ -19,10 +19,10 @@ func (mgr *defaultManager) Stop() {
 		return
 	}
 	for _, stopCh := range mgr.queueStopChanByID {
-		go func(ch chan struct{}) {
-			defer func() { recover() }()
-			ch <- struct{}{}
-		}(stopCh)
+		//go func(ch chan struct{}) {
+		//	defer func() { recover() }()
+		stopCh <- struct{}{}
+		//}(stopCh)
 	}
 	return
 }
