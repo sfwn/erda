@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
+	"github.com/shopspring/decimal"
 
 	"github.com/erda-project/erda-infra/base/servicehub"
 	"github.com/erda-project/erda-infra/providers/component-protocol/cptype"
@@ -122,7 +123,7 @@ func (q *Q) Render(ctx context.Context, c *cptype.Component, scenario cptype.Sce
 	return nil
 }
 
-// score = SUM(passed)/SUM(executed) * 100
+// score = RATE(passed) * RATE(executed) * 100
 // value range: 0-100
 func (q *Q) calcMtPlanScore(ctx context.Context, h *gshelper.GSHelper) float64 {
 	mtPlans := h.GetGlobalManualTestPlanList()
@@ -137,15 +138,41 @@ func (q *Q) calcMtPlanScore(ctx context.Context, h *gshelper.GSHelper) float64 {
 	if numCaseTotal == 0 {
 		return 0
 	}
-	score := float64(numCasePassed) / float64(numCaseTotal) * float64(numCaseExecuted) / float64(numCaseTotal) * 100
+
+	numCasePassedDecimal := decimal.NewFromInt(int64(numCasePassed))
+	numCaseExecutedDecimal := decimal.NewFromInt(int64(numCaseExecuted))
+	numCaseTotalDecimal := decimal.NewFromInt(int64(numCaseTotal))
+
+	ratePassed := numCasePassedDecimal.Div(numCaseTotalDecimal)
+	rateExecuted := numCaseExecutedDecimal.Div(numCaseTotalDecimal)
+
+	score, _ := ratePassed.Mul(rateExecuted).Mul(decimal.NewFromInt(100)).Float64()
 	return score
 }
 
-// score = SUM(all_at_plan_latest_passed_rate)/NUM(at_plan) * SUM(all_at_plan_latest_passed_rate)/NUM(at_plan) * 100
+// score = (SUM(api_passed)/SUM(api_total)) * (SUM(api_executed)/SUM(api_total)) * 100
 // value range: 0-100
 func (q *Q) calcAtPlanScore(ctx context.Context, h *gshelper.GSHelper) float64 {
-	// TODO use at_block value directly
-	return 70
+	atPlans := h.GetGlobalAutoTestPlanList()
+
+	var numAPIPassed, numAPIExecuted, numAPITotal uint64
+	for _, plan := range atPlans {
+		numAPIPassed += uint64(plan.SuccessApiNum)
+		numAPIExecuted += uint64(plan.ExecuteApiNum)
+		numAPITotal += uint64(plan.TotalApiNum)
+	}
+
+	if numAPITotal == 0 {
+		return 0
+	}
+
+	numAPIPassedDecimal := decimal.NewFromInt(int64(numAPIPassed))
+	numAPIExecutedDecimal := decimal.NewFromInt(int64(numAPIExecuted))
+	numAPITotalDecimal := decimal.NewFromInt(int64(numAPITotal))
+	apiPassedRate := numAPIPassedDecimal.Div(numAPITotalDecimal)
+	apiExecutedRate := numAPIExecutedDecimal.Div(numAPITotalDecimal)
+	score, _ := apiPassedRate.Mul(apiExecutedRate).Mul(decimal.NewFromInt(100)).Float64()
+	return score
 }
 
 // bug score: score = 100 - DI (result must >= 0)
@@ -171,9 +198,14 @@ func (q *Q) calcBugScore(ctx context.Context, h *gshelper.GSHelper) float64 {
 		}
 	}
 
-	DI := float64(numFatal*10) + float64(numSlight*3) + float64(numNormal*1) + float64(numSlight)*0.1
+	numFatalDecimal := decimal.NewFromInt(int64(numFatal) * 10)
+	numSeriousDecimal := decimal.NewFromInt(int64(numSerious) * 3)
+	numNormalDecimal := decimal.NewFromInt(int64(numNormal) * 1)
+	numSlightDecimal := decimal.NewFromFloat(float64(numSlight) * 0.1)
 
-	score := 100 - DI
+	DI, _ := numFatalDecimal.Add(numSeriousDecimal).Add(numNormalDecimal).Add(numSlightDecimal).Float64()
+
+	score, _ := decimal.NewFromFloat(100 - DI).Float64()
 
 	return score
 }
@@ -211,7 +243,7 @@ func (q *Q) calcBugReopenRate(ctx context.Context, h *gshelper.GSHelper) float64
 	if totalCount == 0 {
 		return 0
 	}
-	score := float64(reopenCount) / float64(totalCount) * 100
+	score, _ := decimal.NewFromInt(int64(reopenCount)).Div(decimal.NewFromInt(int64(totalCount))).Mul(decimal.NewFromInt(100)).Float64()
 	return score
 }
 
