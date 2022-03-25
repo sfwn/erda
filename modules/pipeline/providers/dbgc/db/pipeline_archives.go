@@ -22,7 +22,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/erda-project/erda-infra/base/version"
-	"github.com/erda-project/erda/modules/pipeline/dbclient"
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 )
 
@@ -32,7 +32,7 @@ type ArchiveDeleteRequest struct {
 	EndTimeCreated time.Time
 }
 
-func (client *Client) CreatePipelineArchive(archive *spec.PipelineArchive, ops ...dbclient.SessionOption) error {
+func (client *Client) CreatePipelineArchive(archive *spec.PipelineArchive, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -40,7 +40,7 @@ func (client *Client) CreatePipelineArchive(archive *spec.PipelineArchive, ops .
 	return err
 }
 
-func (client *Client) GetPipelineArchiveByPipelineID(pipelineID uint64, ops ...dbclient.SessionOption) (spec.PipelineArchive, bool, error) {
+func (client *Client) GetPipelineArchiveByPipelineID(pipelineID uint64, ops ...mysqlxorm.SessionOption) (spec.PipelineArchive, bool, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -49,7 +49,7 @@ func (client *Client) GetPipelineArchiveByPipelineID(pipelineID uint64, ops ...d
 	return archive, exist, err
 }
 
-func (client *Client) GetPipelineFromArchive(pipelineID uint64, ops ...dbclient.SessionOption) (spec.Pipeline, bool, error) {
+func (client *Client) GetPipelineFromArchive(pipelineID uint64, ops ...mysqlxorm.SessionOption) (spec.Pipeline, bool, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -65,7 +65,7 @@ func (client *Client) GetPipelineFromArchive(pipelineID uint64, ops ...dbclient.
 }
 
 // GetPipelineIncludeArchived return: pipeline, exist, findFromArchive, error
-func (client *Client) GetPipelineIncludeArchived(pipelineID uint64, ops ...dbclient.SessionOption) (spec.Pipeline, bool, bool, error) {
+func (client *Client) GetPipelineIncludeArchived(pipelineID uint64, ops ...mysqlxorm.SessionOption) (spec.Pipeline, bool, bool, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -85,7 +85,7 @@ func (client *Client) GetPipelineIncludeArchived(pipelineID uint64, ops ...dbcli
 	return ap, findFromArchive, findFromArchive, err
 }
 
-func (client *Client) GetPipelineTasksFromArchive(pipelineID uint64, ops ...dbclient.SessionOption) ([]spec.PipelineTask, error) {
+func (client *Client) GetPipelineTasksFromArchive(pipelineID uint64, ops ...mysqlxorm.SessionOption) ([]spec.PipelineTask, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -94,7 +94,7 @@ func (client *Client) GetPipelineTasksFromArchive(pipelineID uint64, ops ...dbcl
 }
 
 // GetPipelineTasksIncludeArchived return: tasks, findFromArchive, error
-func (client *Client) GetPipelineTasksIncludeArchived(pipelineID uint64, ops ...dbclient.SessionOption) ([]spec.PipelineTask, bool, error) {
+func (client *Client) GetPipelineTasksIncludeArchived(pipelineID uint64, ops ...mysqlxorm.SessionOption) ([]spec.PipelineTask, bool, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -137,7 +137,7 @@ func (client *Client) ArchivePipeline(pipelineID uint64) (_ uint64, err error) {
 		}
 	}()
 
-	ops := dbclient.WithTxSession(txSession.Session)
+	ops := mysqlxorm.WithSession(txSession)
 
 	// pipeline
 	p, err := client.GetPipeline(pipelineID, ops)
@@ -215,7 +215,7 @@ func tableFieldName(tableName string, field string) string {
 	return fmt.Sprintf("%v.%v", tableName, field)
 }
 
-func (client *Client) DeletePipelineArchives(req ArchiveDeleteRequest, ops ...dbclient.SessionOption) error {
+func (client *Client) DeletePipelineArchives(req ArchiveDeleteRequest, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 	if req.EndTimeCreated.IsZero() {

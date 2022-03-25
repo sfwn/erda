@@ -8,6 +8,8 @@ WORKDIR "$GOPATH/src/github.com/erda-project/erda/"
 RUN mkdir /tmp/dicehub-extension
 RUN if [ -d "extensions" ] ; then mv extensions/* /tmp/dicehub-extension ; fi
 
+RUN git clone https://github.com/sfwn/erda-infra -b feature/mysqlxorm-with-rawsession --depth 1 ../erda-infra
+
 
 ARG MODULE_PATH
 

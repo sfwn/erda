@@ -37,6 +37,7 @@ type Manager struct {
 	kindsByName     map[types.Name]types.Kind
 	pools           *goroutinepool.GoroutinePool
 	clusterInfo     clusterinfo.Interface
+	injectedFields  types.CreateFnInjectedFields
 }
 
 var mgr Manager
@@ -45,12 +46,13 @@ func GetManager() *Manager {
 	return &mgr
 }
 
-func (m *Manager) Initialize(ctx context.Context, cfgs chan spec.ActionExecutorConfig, clusterInfo clusterinfo.Interface) error {
+func (m *Manager) Initialize(ctx context.Context, cfgs chan spec.ActionExecutorConfig, clusterInfo clusterinfo.Interface, injectedFields types.CreateFnInjectedFields) error {
 	m.factory = types.Factory
 	m.executorsByName = make(map[types.Name]types.ActionExecutor)
 	m.kindsByName = make(map[types.Name]types.Kind)
 	m.pools = goroutinepool.New(conf.K8SExecutorPoolSize())
 	m.clusterInfo = clusterInfo
+	m.injectedFields = injectedFields
 
 	logrus.Info("pipengine action executor manager Initialize ...")
 
@@ -72,7 +74,7 @@ func (m *Manager) Initialize(ctx context.Context, cfgs chan spec.ActionExecutorC
 			logrus.Infof("=> kind [%s] option: %s=%s", c.Kind, k, v)
 		}
 
-		actionExecutor, err := create(name, c.Options)
+		actionExecutor, err := create(name, c.Options, m.injectedFields)
 		if err != nil {
 			logrus.Infof("=> kind [%s] created failed, err: %v", c.Kind, err)
 			return err
@@ -113,7 +115,7 @@ func (m *Manager) Get(name types.Name) (types.ActionExecutor, error) {
 	if !ok {
 		return nil, errors.Errorf("executor kind [%s] not found", kind)
 	}
-	actionExecutor, err := createFn(name, nil)
+	actionExecutor, err := createFn(name, nil, m.injectedFields)
 	if err != nil {
 		return nil, errors.Errorf("executor [%s] created failed, err: %v", name, err)
 	}

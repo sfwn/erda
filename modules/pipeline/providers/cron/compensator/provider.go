@@ -67,7 +67,7 @@ func (p *provider) WithPipelineFunc(pipelineFunc PipelineFunc) {
 }
 
 func (p *provider) Init(ctx servicehub.Context) error {
-	p.dbClient = &dbclient.Client{Engine: p.MySQL.DB()}
+	p.dbClient = dbclient.MustNew(p.MySQL)
 	jsonStore, err := jsonstore.New()
 	if err != nil {
 		return err

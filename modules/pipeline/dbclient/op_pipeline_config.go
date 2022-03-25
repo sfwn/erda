@@ -17,6 +17,7 @@ package dbclient
 import (
 	"github.com/mitchellh/mapstructure"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 )
 
@@ -66,8 +67,10 @@ var defaultK8sSparkActionExecutor = spec.PipelineConfig{
 	},
 }
 
-func (client *Client) ListPipelineConfigsOfActionExecutor() (configs []spec.PipelineConfig, cfgChan chan spec.ActionExecutorConfig, err error) {
-	if err := client.Find(&configs, spec.PipelineConfig{Type: spec.PipelineConfigTypeActionExecutor}); err != nil {
+func (client *Client) ListPipelineConfigsOfActionExecutor(ops ...mysqlxorm.SessionOption) (configs []spec.PipelineConfig, cfgChan chan spec.ActionExecutorConfig, err error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
+	if err := session.Find(&configs, spec.PipelineConfig{Type: spec.PipelineConfigTypeActionExecutor}); err != nil {
 		return nil, nil, err
 	}
 	// add default api-test wait k8sjob k8sflink k8sspark action executor

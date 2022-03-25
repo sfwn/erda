@@ -19,11 +19,12 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 )
 
-func (client *Client) CreatePipelineReport(report *spec.PipelineReport, ops ...SessionOption) error {
+func (client *Client) CreatePipelineReport(report *spec.PipelineReport, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -31,7 +32,7 @@ func (client *Client) CreatePipelineReport(report *spec.PipelineReport, ops ...S
 	return err
 }
 
-func (client *Client) UpdatePipelineReport(report *spec.PipelineReport, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineReport(report *spec.PipelineReport, ops ...mysqlxorm.SessionOption) error {
 	if report.ID == 0 {
 		return fmt.Errorf("cannot update report, missing report id")
 	}
@@ -42,7 +43,7 @@ func (client *Client) UpdatePipelineReport(report *spec.PipelineReport, ops ...S
 	return err
 }
 
-func (client *Client) PagingPipelineReportSets(req apistructs.PipelineReportSetPagingRequest, ops ...SessionOption) ([]apistructs.PipelineReportSet, int, error) {
+func (client *Client) PagingPipelineReportSets(req apistructs.PipelineReportSetPagingRequest, ops ...mysqlxorm.SessionOption) ([]apistructs.PipelineReportSet, int, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -116,7 +117,7 @@ func (client *Client) PagingPipelineReportSets(req apistructs.PipelineReportSetP
 	return sets, total, nil
 }
 
-func (client *Client) DeletePipelineReportsByPipelineID(pipelineID uint64, ops ...SessionOption) error {
+func (client *Client) DeletePipelineReportsByPipelineID(pipelineID uint64, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -124,7 +125,7 @@ func (client *Client) DeletePipelineReportsByPipelineID(pipelineID uint64, ops .
 	return err
 }
 
-func (client *Client) BatchListPipelineReportsByPipelineID(pipelineIDs []uint64, types []string, ops ...SessionOption) (map[uint64][]spec.PipelineReport, error) {
+func (client *Client) BatchListPipelineReportsByPipelineID(pipelineIDs []uint64, types []string, ops ...mysqlxorm.SessionOption) (map[uint64][]spec.PipelineReport, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 

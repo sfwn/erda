@@ -61,7 +61,7 @@ func (p *provider) Init(ctx servicehub.Context) error {
 	p.js = js
 	p.etcd = etcdStore
 
-	p.dbClient = &db.Client{Client: dbclient.Client{Engine: p.MySQL.DB()}}
+	p.dbClient = &db.Client{Client: &dbclient.Client{Interface: p.MySQL}}
 	return nil
 }
 

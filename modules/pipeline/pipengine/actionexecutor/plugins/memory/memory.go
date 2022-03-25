@@ -27,7 +27,7 @@ const (
 )
 
 func init() {
-	types.Register(Kind, func(name types.Name, options map[string]string) (types.ActionExecutor, error) {
+	types.Register(Kind, func(name types.Name, options map[string]string, injectedFields types.CreateFnInjectedFields) (types.ActionExecutor, error) {
 		return &Memory{
 			name:    name,
 			options: options,

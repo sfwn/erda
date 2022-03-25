@@ -44,7 +44,7 @@ const (
 var Kind = types.Kind(spec.PipelineTaskExecutorKindK8sFlink)
 
 func init() {
-	types.MustRegister(Kind, func(name types.Name, options map[string]string) (types.ActionExecutor, error) {
+	types.MustRegister(Kind, func(name types.Name, options map[string]string, injectedFields types.CreateFnInjectedFields) (types.ActionExecutor, error) {
 		clusterName, err := Kind.GetClusterNameByExecutorName(name)
 		if err != nil {
 			return nil, err

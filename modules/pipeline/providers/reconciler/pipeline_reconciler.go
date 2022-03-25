@@ -20,7 +20,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xormplus/xorm"
+
 	"github.com/erda-project/erda-infra/base/logs"
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/aop"
 	"github.com/erda-project/erda/modules/pipeline/aop/aoptypes"
@@ -89,18 +92,18 @@ func (pr *defaultPipelineReconciler) PrepareBeforeReconcile(ctx context.Context,
 	if p.Status.AfterPipelineQueue() {
 		return nil
 	}
-	//_, err := pr.dbClient.Transaction(func(s *xorm.Session) (interface{}, error) {
-	// update status
-	if err := pr.dbClient.UpdatePipelineBaseStatus(p.ID, apistructs.PipelineStatusRunning); err != nil {
-		return err
-	}
-	pr.log.Infof("pipelineID: %d, update pipeline status (%s -> %s)", p.ID, p.Status, apistructs.PipelineStatusRunning)
-	p.Status = apistructs.PipelineStatusRunning
-	// send event
-	events.EmitPipelineInstanceEvent(p, p.GetUserID())
-	return nil
-	//})
-	//return err
+	_, err := pr.dbClient.DB().Transaction(func(s *xorm.Session) (interface{}, error) {
+		// update status
+		if err := pr.dbClient.UpdatePipelineBaseStatus(p.ID, apistructs.PipelineStatusRunning, mysqlxorm.WithRawSession(s)); err != nil {
+			return nil, err
+		}
+		pr.log.Infof("pipelineID: %d, update pipeline status (%s -> %s)", p.ID, p.Status, apistructs.PipelineStatusRunning)
+		p.Status = apistructs.PipelineStatusRunning
+		// send event
+		events.EmitPipelineInstanceEvent(p, p.GetUserID())
+		return nil, nil
+	})
+	return err
 }
 
 func (pr *defaultPipelineReconciler) GetTasksCanBeConcurrentlyScheduled(ctx context.Context, p *spec.Pipeline) ([]*spec.PipelineTask, error) {
@@ -194,9 +197,17 @@ func (pr *defaultPipelineReconciler) UpdateCurrentReconcileStatusIfNecessary(ctx
 		return nil
 	}
 	// changed, update pipeline status
-	//_, err = pr.dbClient.Transaction(func(s *xorm.Session) (interface{}, error) {
-	// update status
-	if err := pr.dbClient.UpdatePipelineBaseStatus(p.ID, calculatedPipelineStatus); err != nil {
+	_, err = pr.dbClient.DB().Transaction(func(s *xorm.Session) (interface{}, error) {
+		// update status
+		if err := pr.dbClient.UpdatePipelineBaseStatus(p.ID, calculatedPipelineStatus, mysqlxorm.WithRawSession(s)); err != nil {
+			return nil, err
+		}
+		p.Status = calculatedPipelineStatus
+		// send event
+		events.EmitPipelineInstanceEvent(p, p.GetUserID())
+		return nil, nil
+	})
+	if err != nil {
 		return err
 	}
 	p.Status = calculatedPipelineStatus

@@ -17,11 +17,14 @@ package dbclient
 import (
 	"github.com/pkg/errors"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 )
 
-func (client *Client) NewArtifact(sha, identityText string, t apistructs.BuildArtifactType, content string, clusterName string, pipelineID uint64) (spec.CIV3BuildArtifact, error) {
+func (client *Client) NewArtifact(sha, identityText string, t apistructs.BuildArtifactType, content string, clusterName string, pipelineID uint64, ops ...mysqlxorm.SessionOption) (spec.CIV3BuildArtifact, error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 	artifact := spec.CIV3BuildArtifact{
 		Sha256:       sha,
 		IdentityText: identityText,
@@ -34,7 +37,7 @@ func (client *Client) NewArtifact(sha, identityText string, t apistructs.BuildAr
 	query := spec.CIV3BuildArtifact{
 		Sha256: sha,
 	}
-	success, err := client.Get(&query)
+	success, err := session.Get(&query)
 	if err != nil {
 		return spec.CIV3BuildArtifact{}, errors.Wrapf(err, "query artifact by sha: %s before register", sha)
 	}
@@ -42,36 +45,40 @@ func (client *Client) NewArtifact(sha, identityText string, t apistructs.BuildAr
 		// update
 		artifact.ID = query.ID
 		artifact.CreatedAt = query.CreatedAt
-		_, err := client.ID(artifact.ID).Update(&artifact)
+		_, err := session.ID(artifact.ID).Update(&artifact)
 		if err != nil {
 			return spec.CIV3BuildArtifact{}, errors.Wrapf(err, "failed to update artifact, %#v", artifact)
 		}
 		return artifact, nil
 	} else {
 		// insert
-		if _, err := client.InsertOne(&artifact); err != nil {
+		if _, err := session.InsertOne(&artifact); err != nil {
 			return spec.CIV3BuildArtifact{}, errors.Wrapf(err, "failed to insert new artifact, %#v", artifact)
 		}
 		return artifact, nil
 	}
 }
 
-func (client *Client) DeleteArtifact(id int64) error {
-	if _, err := client.ID(id).Delete(&spec.CIV3BuildArtifact{}); err != nil {
+func (client *Client) DeleteArtifact(id int64, ops ...mysqlxorm.SessionOption) error {
+	session := client.NewSession(ops...)
+	defer session.Close()
+	if _, err := session.ID(id).Delete(&spec.CIV3BuildArtifact{}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (client *Client) GetBuildArtifactBySha256(sha256 string) (artifact spec.CIV3BuildArtifact, err error) {
+func (client *Client) GetBuildArtifactBySha256(sha256 string, ops ...mysqlxorm.SessionOption) (artifact spec.CIV3BuildArtifact, err error) {
 	defer func() {
 		err = errors.Wrapf(err, "failed to get build-artifact by sha256 [%s]", sha256)
 	}()
+	session := client.NewSession(ops...)
+	defer session.Close()
 	if len(sha256) == 0 {
 		return spec.CIV3BuildArtifact{}, errors.New("missing sha256")
 	}
 	artifact.Sha256 = sha256
-	found, err := client.Get(&artifact)
+	found, err := session.Get(&artifact)
 	if err != nil {
 		return spec.CIV3BuildArtifact{}, err
 	}
@@ -81,8 +88,10 @@ func (client *Client) GetBuildArtifactBySha256(sha256 string) (artifact spec.CIV
 	return artifact, nil
 }
 
-func (client *Client) DeleteArtifactsByImages(_type apistructs.BuildArtifactType, images []string) error {
-	sql := client.Where("type = ?", _type)
+func (client *Client) DeleteArtifactsByImages(_type apistructs.BuildArtifactType, images []string, ops ...mysqlxorm.SessionOption) error {
+	session := client.NewSession(ops...)
+	defer session.Close()
+	sql := session.Where("type = ?", _type)
 	for _, image := range images {
 		if image == "" {
 			continue

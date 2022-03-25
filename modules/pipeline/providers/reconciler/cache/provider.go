@@ -40,7 +40,7 @@ type provider struct {
 }
 
 func (p *provider) Init(ctx servicehub.Context) error {
-	p.dbClient = &dbclient.Client{Engine: p.MySQL.DB()}
+	p.dbClient = dbclient.MustNew(p.MySQL)
 	p.bdl = bundle.New(bundle.WithAllAvailableClients())
 	p.cacheMap = sync.Map{}
 	return nil

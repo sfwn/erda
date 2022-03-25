@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/services/apierrors"
 	"github.com/erda-project/erda/modules/pipeline/spec"
@@ -40,7 +41,7 @@ const (
 )
 
 // CreatePipelineQueue
-func (client *Client) CreatePipelineQueue(req apistructs.PipelineQueueCreateRequest, ops ...SessionOption) (*apistructs.PipelineQueue, error) {
+func (client *Client) CreatePipelineQueue(req apistructs.PipelineQueueCreateRequest, ops ...mysqlxorm.SessionOption) (*apistructs.PipelineQueue, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -73,7 +74,7 @@ func (client *Client) CreatePipelineQueue(req apistructs.PipelineQueueCreateRequ
 }
 
 // createPipelineQueueFields create queue's other fields after queue id label created.
-func (client *Client) createPipelineQueueFields(req apistructs.PipelineQueueCreateRequest, queueIDLabel spec.PipelineLabel, ops ...SessionOption) (*apistructs.PipelineQueue, error) {
+func (client *Client) createPipelineQueueFields(req apistructs.PipelineQueueCreateRequest, queueIDLabel spec.PipelineLabel, ops ...mysqlxorm.SessionOption) (*apistructs.PipelineQueue, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -198,7 +199,7 @@ func constructQueueByLabels(labels []spec.PipelineLabel) (*apistructs.PipelineQu
 }
 
 // GetPipelineQueue
-func (client *Client) GetPipelineQueue(queueID uint64, ops ...SessionOption) (*apistructs.PipelineQueue, bool, error) {
+func (client *Client) GetPipelineQueue(queueID uint64, ops ...mysqlxorm.SessionOption) (*apistructs.PipelineQueue, bool, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -251,7 +252,7 @@ func transferQueuePagingRequestToMustMatchLabels(req *apistructs.PipelineQueuePa
 	}
 }
 
-func (client *Client) PagingPipelineQueues(req apistructs.PipelineQueuePagingRequest, ops ...SessionOption) (*apistructs.PipelineQueuePagingData, error) {
+func (client *Client) PagingPipelineQueues(req apistructs.PipelineQueuePagingRequest, ops ...mysqlxorm.SessionOption) (*apistructs.PipelineQueuePagingData, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -383,7 +384,7 @@ func transferMustMatchLabelsToMap(ss []string) (map[string][]string, error) {
 }
 
 // UpdatePipelineQueue
-func (client *Client) UpdatePipelineQueue(req apistructs.PipelineQueueUpdateRequest, ops ...SessionOption) (*apistructs.PipelineQueue, error) {
+func (client *Client) UpdatePipelineQueue(req apistructs.PipelineQueueUpdateRequest, ops ...mysqlxorm.SessionOption) (*apistructs.PipelineQueue, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -414,7 +415,7 @@ func (client *Client) UpdatePipelineQueue(req apistructs.PipelineQueueUpdateRequ
 }
 
 // DeletePipelineQueue
-func (client *Client) DeletePipelineQueue(queueID uint64, ops ...SessionOption) error {
+func (client *Client) DeletePipelineQueue(queueID uint64, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 

@@ -22,9 +22,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/commonutil/statusutil"
-	"github.com/erda-project/erda/modules/pipeline/dbclient"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 	"github.com/erda-project/erda/pkg/strutil"
 )
@@ -222,7 +222,7 @@ func parsePipelineOutputRefV2(ref string) (string, string, error) {
 }
 
 // copyParentPipelineRunInfo 从父流水线拷贝执行信息
-func (tr *defaultTaskReconciler) copyParentPipelineRunInfo(snippetPipeline *spec.Pipeline, session ...dbclient.SessionOption) error {
+func (tr *defaultTaskReconciler) copyParentPipelineRunInfo(snippetPipeline *spec.Pipeline, session ...mysqlxorm.SessionOption) error {
 	// 从根流水线拷贝执行信息到嵌套流水线
 	rootPipelineID := snippetPipeline.Extra.SnippetChain[0]
 	rootPipeline, err := tr.dbClient.GetPipeline(rootPipelineID)

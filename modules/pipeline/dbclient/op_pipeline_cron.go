@@ -17,12 +17,15 @@ package dbclient
 import (
 	"github.com/pkg/errors"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 )
 
 // return: result, total, nil
-func (client *Client) PagingPipelineCron(req apistructs.PipelineCronPagingRequest) ([]spec.PipelineCron, int64, error) {
+func (client *Client) PagingPipelineCron(req apistructs.PipelineCronPagingRequest, ops ...mysqlxorm.SessionOption) ([]spec.PipelineCron, int64, error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 	result := make([]spec.PipelineCron, 0)
 	var total int64 = 0
 
@@ -39,7 +42,7 @@ func (client *Client) PagingPipelineCron(req apistructs.PipelineCronPagingReques
 		req.PageSize = 20
 	}
 
-	limitSQL := client.Desc("id")
+	limitSQL := session.Desc("id")
 	// source
 	// 必须指定 sources 或 allSources
 	if !req.AllSources && len(req.Sources) == 0 {
@@ -79,28 +82,14 @@ func (client *Client) PagingPipelineCron(req apistructs.PipelineCronPagingReques
 	for i := range limitIDs {
 		ids = append(ids, limitIDs[i].ID)
 	}
-	if err := client.In("id", ids).Desc("id").Find(&result); err != nil {
+	if err := session.In("id", ids).Desc("id").Find(&result); err != nil {
 		return nil, -1, err
 	}
 
 	return result, total, nil
 }
 
-func (client *Client) ListPipelineCronsByApplicationID(applicationID uint64) (crons []spec.PipelineCron, err error) {
-	if err = client.Find(&crons, spec.PipelineCron{ApplicationID: applicationID}); err != nil {
-		return nil, err
-	}
-	return crons, nil
-}
-
-func (client *Client) ListAllPipelineCrons() (crons []spec.PipelineCron, err error) {
-	if err = client.Find(&crons); err != nil {
-		return nil, err
-	}
-	return crons, nil
-}
-
-func (client *Client) ListPipelineCrons(enable *bool, ops ...SessionOption) ([]spec.PipelineCron, error) {
+func (client *Client) ListPipelineCrons(enable *bool, ops ...mysqlxorm.SessionOption) ([]spec.PipelineCron, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -112,11 +101,13 @@ func (client *Client) ListPipelineCrons(enable *bool, ops ...SessionOption) ([]s
 	return crons, err
 }
 
-func (client *Client) GetPipelineCron(id interface{}) (cron spec.PipelineCron, err error) {
+func (client *Client) GetPipelineCron(id interface{}, ops ...mysqlxorm.SessionOption) (cron spec.PipelineCron, err error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 	defer func() {
 		err = errors.Wrapf(err, "failed to get pipeline cron by id [%v]", id)
 	}()
-	found, err := client.ID(id).Get(&cron)
+	found, err := session.ID(id).Get(&cron)
 	if err != nil {
 		return spec.PipelineCron{}, err
 	}
@@ -126,33 +117,41 @@ func (client *Client) GetPipelineCron(id interface{}) (cron spec.PipelineCron, e
 	return cron, nil
 }
 
-func (client *Client) CheckExistPipelineCronByApplicationBranchYmlName(applicationID uint64, branch string, pipelineYmlName string) (bool, spec.PipelineCron, error) {
+func (client *Client) CheckExistPipelineCronByApplicationBranchYmlName(applicationID uint64, branch string, pipelineYmlName string, ops ...mysqlxorm.SessionOption) (bool, spec.PipelineCron, error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 	var result = spec.PipelineCron{
 		ApplicationID:   applicationID,
 		Branch:          branch,
 		PipelineYmlName: pipelineYmlName,
 	}
-	exist, err := client.Get(&result)
+	exist, err := session.Get(&result)
 	if err != nil {
 		return false, spec.PipelineCron{}, err
 	}
 	return exist, result, nil
 }
 
-func (client *Client) CreatePipelineCron(cron *spec.PipelineCron) error {
-	_, err := client.InsertOne(cron)
+func (client *Client) CreatePipelineCron(cron *spec.PipelineCron, ops ...mysqlxorm.SessionOption) error {
+	session := client.NewSession(ops...)
+	defer session.Close()
+	_, err := session.InsertOne(cron)
 	return errors.Wrapf(err, "failed to create pipeline cron, applicationID [%d], branch [%s], expr [%s], enable [%v]", cron.ApplicationID, cron.Branch, cron.CronExpr, cron.Enable)
 }
 
-func (client *Client) DeletePipelineCron(id interface{}) error {
-	if _, err := client.ID(id).Delete(&spec.PipelineCron{}); err != nil {
+func (client *Client) DeletePipelineCron(id interface{}, ops ...mysqlxorm.SessionOption) error {
+	session := client.NewSession(ops...)
+	defer session.Close()
+	if _, err := session.ID(id).Delete(&spec.PipelineCron{}); err != nil {
 		return errors.Errorf("failed to delete pipeline cron, id: %d, err: %v", id, err)
 	}
 	return nil
 }
 
 //更新cron的enable = false，cronExpr = new_.CronExpr
-func (client *Client) DisablePipelineCron(new_ *spec.PipelineCron) (cronID uint64, err error) {
+func (client *Client) DisablePipelineCron(new_ *spec.PipelineCron, ops ...mysqlxorm.SessionOption) (cronID uint64, err error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 
 	var disable = false
 	var updateCron = &spec.PipelineCron{}
@@ -163,7 +162,7 @@ func (client *Client) DisablePipelineCron(new_ *spec.PipelineCron) (cronID uint6
 		Branch:          new_.Branch,
 		PipelineYmlName: new_.PipelineYmlName,
 	}
-	v1Exist, err := client.Get(queryV1)
+	v1Exist, err := session.Get(queryV1)
 	if err != nil {
 		return 0, err
 	}
@@ -185,7 +184,7 @@ func (client *Client) DisablePipelineCron(new_ *spec.PipelineCron) (cronID uint6
 		PipelineSource:  new_.PipelineSource,
 		PipelineYmlName: new_.PipelineYmlName,
 	}
-	v2Exist, err := client.Get(queryV2)
+	v2Exist, err := session.Get(queryV2)
 	if err != nil {
 		return 0, err
 	}
@@ -200,18 +199,24 @@ func (client *Client) DisablePipelineCron(new_ *spec.PipelineCron) (cronID uint6
 	return 0, nil
 }
 
-func (client *Client) UpdatePipelineCron(id interface{}, cron *spec.PipelineCron) error {
-	_, err := client.ID(id).Update(cron)
+func (client *Client) UpdatePipelineCron(id interface{}, cron *spec.PipelineCron, ops ...mysqlxorm.SessionOption) error {
+	session := client.NewSession(ops...)
+	defer session.Close()
+	_, err := session.ID(id).Update(cron)
 	return errors.Wrapf(err, "failed to update pipeline cron, id [%v]", id)
 }
 
 //更新cron，但是假如传入的cron有默认值，那么数据库会被更新成默认值
-func (client *Client) UpdatePipelineCronWillUseDefault(id interface{}, cron *spec.PipelineCron, columns []string) error {
-	_, err := client.ID(id).Cols(columns...).Update(cron)
+func (client *Client) UpdatePipelineCronWillUseDefault(id interface{}, cron *spec.PipelineCron, columns []string, ops ...mysqlxorm.SessionOption) error {
+	session := client.NewSession(ops...)
+	defer session.Close()
+	_, err := session.ID(id).Cols(columns...).Update(cron)
 	return errors.Wrapf(err, "failed to update pipeline cron, id [%v]", id)
 }
 
-func (client *Client) InsertOrUpdatePipelineCron(new_ *spec.PipelineCron) error {
+func (client *Client) InsertOrUpdatePipelineCron(new_ *spec.PipelineCron, ops ...mysqlxorm.SessionOption) error {
+	session := client.NewSession(ops...)
+	defer session.Close()
 
 	// 寻找 v1
 	queryV1 := &spec.PipelineCron{
@@ -219,7 +224,7 @@ func (client *Client) InsertOrUpdatePipelineCron(new_ *spec.PipelineCron) error 
 		Branch:          new_.Branch,
 		PipelineYmlName: new_.PipelineYmlName,
 	}
-	v1Exist, err := client.Get(queryV1)
+	v1Exist, err := session.Get(queryV1)
 	if err != nil {
 		return err
 	}
@@ -237,7 +242,7 @@ func (client *Client) InsertOrUpdatePipelineCron(new_ *spec.PipelineCron) error 
 		PipelineSource:  new_.PipelineSource,
 		PipelineYmlName: new_.PipelineYmlName,
 	}
-	v2Exist, err := client.Get(queryV2)
+	v2Exist, err := session.Get(queryV2)
 	if err != nil {
 		return err
 	}

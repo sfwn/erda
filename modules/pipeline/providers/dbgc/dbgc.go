@@ -426,7 +426,7 @@ func (p *provider) handleOldNonDBGCPipelines(checkPointDBGCKey string) {
 	}
 	// fetch only id and status is enough
 	var oldPipelineBases []spec.PipelineBase
-	if err := p.dbClient.Cols(`id`, `status`).Where("id < ?", checkPointPID).Find(&oldPipelineBases); err != nil {
+	if err := p.dbClient.DB().Cols(`id`, `status`).Where("id < ?", checkPointPID).Find(&oldPipelineBases); err != nil {
 		p.Log.Errorf("failed to query pipelines before check point, err: %v", err)
 		return
 	}

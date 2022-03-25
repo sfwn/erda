@@ -18,7 +18,9 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/erda-project/erda/bundle"
 	"github.com/erda-project/erda/modules/pipeline/pipengine/actionexecutor"
+	"github.com/erda-project/erda/modules/pipeline/pipengine/actionexecutor/types"
 	"github.com/erda-project/erda/pkg/http/httpserver"
 )
 
@@ -30,7 +32,10 @@ func (e *Endpoints) reloadActionExecutorConfig(ctx context.Context, r *http.Requ
 		return httpserver.ErrResp(http.StatusInternalServerError, "RELOAD PIPENGINE CONFIG: LIST", err.Error())
 	}
 
-	if err := actionexecutor.GetManager().Initialize(ctx, cfgChan, e.clusterInfo); err != nil {
+	if err := actionexecutor.GetManager().Initialize(ctx, cfgChan, e.clusterInfo, types.CreateFnInjectedFields{
+		MySQL: e.dbClient.Interface,
+		Bdl:   bundle.New(bundle.WithAllAvailableClients()),
+	}); err != nil {
 		return httpserver.ErrResp(http.StatusInternalServerError, "RELOAD PIPENGINE CONFIG: RELOAD", err.Error())
 	}
 	return httpserver.OkResp(nil)

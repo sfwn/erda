@@ -44,7 +44,7 @@ type provider struct {
 
 func (r *provider) Init(ctx servicehub.Context) error {
 	// dbclient
-	r.dbClient = &dbclient.Client{Engine: r.MySQL.DB()}
+	r.dbClient = dbclient.MustNew(r.MySQL)
 	js, err := jsonstore.New()
 	if err != nil {
 		return err

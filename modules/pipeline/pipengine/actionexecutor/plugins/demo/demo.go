@@ -30,7 +30,7 @@ const (
 )
 
 func init() {
-	types.Register("DEMO", func(name types.Name, options map[string]string) (types.ActionExecutor, error) {
+	types.Register("DEMO", func(name types.Name, options map[string]string, injectedFields types.CreateFnInjectedFields) (types.ActionExecutor, error) {
 		return &Demo{
 			name: name,
 		}, nil

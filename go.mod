@@ -32,7 +32,7 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/buraksezer/consistent v0.9.0
 	github.com/c2h5oh/datasize v0.0.0-20200112174442-28bbd4740fee
-	github.com/caarlos0/env v0.0.0-20180521112546-3e0f30cbf50b
+	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/cespare/xxhash v1.1.0
 	github.com/cespare/xxhash/v2 v2.1.1
 	github.com/confluentinc/confluent-kafka-go v1.5.2
@@ -212,6 +212,7 @@ require (
 replace (
 	github.com/coreos/bbolt => go.etcd.io/bbolt v1.3.5
 	github.com/docker/spdystream => github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96
+	github.com/erda-project/erda-infra => ../erda-infra
 	github.com/erda-project/erda-proto-go v0.0.0 => ./api/proto-go
 	github.com/google/gnostic => github.com/googleapis/gnostic v0.4.0
 	github.com/googlecloudplatform/flink-operator => github.com/erda-project/flink-on-k8s-operator v0.0.0-20220211023605-1a64c463171a

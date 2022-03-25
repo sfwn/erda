@@ -24,10 +24,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/xormplus/xorm"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/commonutil/thirdparty/gittarutil"
 	"github.com/erda-project/erda/modules/pipeline/conf"
-	"github.com/erda-project/erda/modules/pipeline/dbclient"
 	"github.com/erda-project/erda/modules/pipeline/events"
 	"github.com/erda-project/erda/modules/pipeline/pkg/action_info"
 	"github.com/erda-project/erda/modules/pipeline/providers/cms"
@@ -190,7 +190,7 @@ func (s *PipelineSvc) makePipelineFromRequest(req *apistructs.PipelineCreateRequ
 }
 
 // traverse the stage of yml and save it to the database
-func (s *PipelineSvc) createPipelineGraphStage(p *spec.Pipeline, pipelineYml *pipelineyml.PipelineYml, ops ...dbclient.SessionOption) (stages []*spec.PipelineStage, err error) {
+func (s *PipelineSvc) createPipelineGraphStage(p *spec.Pipeline, pipelineYml *pipelineyml.PipelineYml, ops ...mysqlxorm.SessionOption) (stages []*spec.PipelineStage, err error) {
 	var dbStages []*spec.PipelineStage
 
 	for si := range pipelineYml.Spec().Stages {
@@ -353,13 +353,13 @@ func (s *PipelineSvc) CreatePipelineGraph(p *spec.Pipeline) (err error) {
 
 	// only create pipeline and stages, tasks waiting pipeline run
 	var stages []*spec.PipelineStage
-	_, err = s.dbClient.Transaction(func(session *xorm.Session) (interface{}, error) {
+	_, err = s.dbClient.DB().Transaction(func(session *xorm.Session) (interface{}, error) {
 		// create pipeline
 		if err := s.createPipelineAndCheckNotEndStatus(p, session); err != nil {
 			return nil, err
 		}
 		// create pipeline stages
-		stages, err = s.createPipelineGraphStage(p, pipelineYml, dbclient.WithTxSession(session))
+		stages, err = s.createPipelineGraphStage(p, pipelineYml, mysqlxorm.WithRawSession(session))
 		if err != nil {
 			return nil, err
 		}
@@ -373,7 +373,7 @@ func (s *PipelineSvc) CreatePipelineGraph(p *spec.Pipeline) (err error) {
 		if pipelineAppliedResources != nil {
 			p.Snapshot.AppliedResources = *pipelineAppliedResources
 		}
-		if err := s.dbClient.UpdatePipelineExtraSnapshot(p.ID, p.Snapshot, dbclient.WithTxSession(session)); err != nil {
+		if err := s.dbClient.UpdatePipelineExtraSnapshot(p.ID, p.Snapshot, mysqlxorm.WithRawSession(session)); err != nil {
 			return nil, apierrors.ErrCreatePipelineGraph.InternalError(
 				fmt.Errorf("failed to update pipeline snapshot for applied resources, err: %v", err))
 		}
@@ -399,7 +399,7 @@ func (s *PipelineSvc) CreatePipelineGraph(p *spec.Pipeline) (err error) {
 func (s *PipelineSvc) createPipelineAndCheckNotEndStatus(p *spec.Pipeline, session *xorm.Session) error {
 	// Check whether the parent pipeline has an end state
 	for _, parentPipelineID := range p.Extra.SnippetChain {
-		parentPipeline, _, err := s.dbClient.GetPipelineBase(parentPipelineID, dbclient.WithTxSession(session))
+		parentPipeline, _, err := s.dbClient.GetPipelineBase(parentPipelineID, mysqlxorm.WithRawSession(session))
 		if err != nil {
 			logrus.Errorf("check whether the parent pipeline has an end state, error %v", err)
 			continue
@@ -410,7 +410,7 @@ func (s *PipelineSvc) createPipelineAndCheckNotEndStatus(p *spec.Pipeline, sessi
 	}
 
 	// create pipeline
-	if err := s.dbClient.CreatePipeline(p, dbclient.WithTxSession(session)); err != nil {
+	if err := s.dbClient.CreatePipeline(p, mysqlxorm.WithRawSession(session)); err != nil {
 		return apierrors.ErrCreatePipeline.InternalError(err)
 	}
 	return nil

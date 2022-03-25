@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/commonutil/costtimeutil"
 	definitiondb "github.com/erda-project/erda/modules/pipeline/providers/definition/db"
@@ -31,7 +32,7 @@ import (
 )
 
 // CreatePipeline: base + extra + labels
-func (client *Client) CreatePipeline(p *spec.Pipeline, ops ...SessionOption) error {
+func (client *Client) CreatePipeline(p *spec.Pipeline, ops ...mysqlxorm.SessionOption) error {
 	// base
 	if err := client.CreatePipelineBase(&p.PipelineBase, ops...); err != nil {
 		return errors.Errorf("failed to create pipeline base, err: %v", err)
@@ -62,7 +63,7 @@ func (e dbError) Is(target error) bool { return target != nil && target.Error() 
 var NotFoundBaseError = dbError{msg: "not found base"}
 
 // GetPipeline: base + extra + labels
-func (client *Client) GetPipeline(id interface{}, ops ...SessionOption) (spec.Pipeline, error) {
+func (client *Client) GetPipeline(id interface{}, ops ...mysqlxorm.SessionOption) (spec.Pipeline, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -106,7 +107,7 @@ func (client *Client) GetPipeline(id interface{}, ops ...SessionOption) (spec.Pi
 }
 
 // GetPipelineWithExistInfo 当 id 对应的流水线记录不存在时，error = nil, found = false
-func (client *Client) GetPipelineWithExistInfo(id interface{}, ops ...SessionOption) (spec.Pipeline, bool, error) {
+func (client *Client) GetPipelineWithExistInfo(id interface{}, ops ...mysqlxorm.SessionOption) (spec.Pipeline, bool, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -121,7 +122,7 @@ func (client *Client) GetPipelineWithExistInfo(id interface{}, ops ...SessionOpt
 }
 
 // UpdatePipelineShowMessage 更新 extra.ExtraInfo.ShowMessage
-func (client *Client) UpdatePipelineShowMessage(pipelineID uint64, showMessage apistructs.ShowMessage, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineShowMessage(pipelineID uint64, showMessage apistructs.ShowMessage, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -140,7 +141,7 @@ func (client *Client) UpdatePipelineShowMessage(pipelineID uint64, showMessage a
 	return err
 }
 
-func (client *Client) StoreAnalyzedCrossCluster(pipelineID uint64, analyzedCrossCluster bool, ops ...SessionOption) error {
+func (client *Client) StoreAnalyzedCrossCluster(pipelineID uint64, analyzedCrossCluster bool, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -170,7 +171,7 @@ func (client *Client) RefreshPipeline(p *spec.Pipeline) error {
 }
 
 // UpdateWholeStatusBorn 状态更新顺序：task -> stage -> pipeline
-func (client *Client) UpdateWholeStatusBorn(pipelineID uint64, ops ...SessionOption) (err error) {
+func (client *Client) UpdateWholeStatusBorn(pipelineID uint64, ops ...mysqlxorm.SessionOption) (err error) {
 	defer func() {
 		err = errors.Wrap(err, "failed to update whole pipeline status to born")
 	}()
@@ -178,7 +179,7 @@ func (client *Client) UpdateWholeStatusBorn(pipelineID uint64, ops ...SessionOpt
 	session := client.NewSession(ops...)
 	defer session.Close()
 
-	base, found, err := client.GetPipelineBase(pipelineID)
+	base, found, err := client.GetPipelineBase(pipelineID, ops...)
 	if err != nil {
 		return err
 	}
@@ -186,12 +187,12 @@ func (client *Client) UpdateWholeStatusBorn(pipelineID uint64, ops ...SessionOpt
 		return errors.Errorf("pipeline not found")
 	}
 
-	stages, err := client.ListPipelineStageByPipelineID(base.ID)
+	stages, err := client.ListPipelineStageByPipelineID(base.ID, ops...)
 	if err != nil {
 		return err
 	}
 	for _, stage := range stages {
-		tasks, err := client.ListPipelineTasksByStageID(stage.ID)
+		tasks, err := client.ListPipelineTasksByStageID(stage.ID, ops...)
 		if err != nil {
 			return err
 		}
@@ -221,7 +222,7 @@ func (client *Client) UpdateWholeStatusBorn(pipelineID uint64, ops ...SessionOpt
 }
 
 // UpdateWholeStatusCancel 状态更新顺序：task -> stage -> pipeline
-func (client *Client) UpdateWholeStatusCancel(p *spec.Pipeline, ops ...SessionOption) (err error) {
+func (client *Client) UpdateWholeStatusCancel(p *spec.Pipeline, ops ...mysqlxorm.SessionOption) (err error) {
 	defer func() {
 		err = errors.Wrap(err, "failed to update whole pipeline status to stopByUser")
 	}()
@@ -231,7 +232,7 @@ func (client *Client) UpdateWholeStatusCancel(p *spec.Pipeline, ops ...SessionOp
 
 	cancelTime := time.Now()
 
-	stages, err := client.ListPipelineStageByPipelineID(p.ID)
+	stages, err := client.ListPipelineStageByPipelineID(p.ID, ops...)
 	if err != nil {
 		return err
 	}
@@ -277,7 +278,7 @@ func (client *Client) UpdateWholeStatusCancel(p *spec.Pipeline, ops ...SessionOp
 }
 
 // PageListPipelines return pagingPipelines, pagingPipelineIDs, total, currentPageSize, error
-func (client *Client) PageListPipelines(req apistructs.PipelinePageListRequest, ops ...SessionOption) ([]spec.Pipeline, []uint64, int64, int64, error) {
+func (client *Client) PageListPipelines(req apistructs.PipelinePageListRequest, ops ...mysqlxorm.SessionOption) ([]spec.Pipeline, []uint64, int64, int64, error) {
 
 	session := client.NewSession(ops...)
 	defer session.Close()
@@ -486,7 +487,7 @@ func tableFieldName(tableName string, field string) string {
 // ListPipelineIDsByStatuses
 func (client *Client) ListPipelineIDsByStatuses(status ...apistructs.PipelineStatus) ([]uint64, error) {
 	var ids []uint64
-	err := client.Table(&spec.PipelineBase{}).Cols("id").Where("is_snippet = ?", false).In("status", status).Find(&ids)
+	err := client.DB().Table(&spec.PipelineBase{}).Cols("id").Where("is_snippet = ?", false).In("status", status).Find(&ids)
 	if err != nil {
 		return nil, err
 	}
@@ -548,7 +549,10 @@ func (client *Client) ParseRerunFailedDetail(detail *spec.RerunFailedDetail) (
 }
 
 // PipelineStatistic pipeline 执行情况统计
-func (client *Client) PipelineStatistic(source, clusterName string) (*apistructs.PipelineStatisticResponseData, error) {
+func (client *Client) PipelineStatistic(source, clusterName string, ops ...mysqlxorm.SessionOption) (*apistructs.PipelineStatisticResponseData, error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
+
 	var (
 		success    int64
 		failed     int64
@@ -558,9 +562,9 @@ func (client *Client) PipelineStatistic(source, clusterName string) (*apistructs
 
 	forceIndexSQL := fmt.Sprintf("`%s` FORCE INDEX (`idx_source_status_cluster_timebegin_timeend_id`)", (&spec.PipelineBase{}).TableName())
 
-	successSQL := client.Alias(forceIndexSQL).Where("pipeline_source = ?", source).Where("status = ?", apistructs.PipelineStatusSuccess)
-	processingSQL := client.Alias(forceIndexSQL).Where("pipeline_source = ?", source).In("status", []string{string(apistructs.PipelineStatusQueue), string(apistructs.PipelineStatusRunning)})
-	failedSQL := client.Alias(forceIndexSQL).Where("pipeline_source = ?", source).In("status", []string{string(apistructs.PipelineStatusFailed), string(apistructs.PipelineStatusTimeout)})
+	successSQL := session.Alias(forceIndexSQL).Where("pipeline_source = ?", source).Where("status = ?", apistructs.PipelineStatusSuccess)
+	processingSQL := session.Alias(forceIndexSQL).Where("pipeline_source = ?", source).In("status", []string{string(apistructs.PipelineStatusQueue), string(apistructs.PipelineStatusRunning)})
+	failedSQL := session.Alias(forceIndexSQL).Where("pipeline_source = ?", source).In("status", []string{string(apistructs.PipelineStatusFailed), string(apistructs.PipelineStatusTimeout)})
 
 	if clusterName != "" {
 		successSQL = successSQL.Where("cluster_name = ?", clusterName)
@@ -591,7 +595,7 @@ func (client *Client) PipelineStatistic(source, clusterName string) (*apistructs
 	}, nil
 }
 
-func (client *Client) DeletePipeline(id uint64, ops ...SessionOption) error {
+func (client *Client) DeletePipeline(id uint64, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -608,9 +612,11 @@ func (client *Client) DeletePipeline(id uint64, ops ...SessionOption) error {
 	return nil
 }
 
-func (client *Client) ListPipelineSources() ([]apistructs.PipelineSource, error) {
+func (client *Client) ListPipelineSources(ops ...mysqlxorm.SessionOption) ([]apistructs.PipelineSource, error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 	result := make([]apistructs.PipelineSource, 0)
-	err := client.Table(&spec.PipelineBase{}).Distinct("pipeline_source").Select("pipeline_source").Find(&result)
+	err := session.Table(&spec.PipelineBase{}).Distinct("pipeline_source").Select("pipeline_source").Find(&result)
 	return result, err
 }
 
@@ -635,7 +641,7 @@ func (client *Client) GetPipelineOutputs(pipelineID uint64) (map[string]map[stri
 	return outputs, nil
 }
 
-func (client *Client) ListPipelinesByIDs(pipelineIDs []uint64, needQueryDefinition bool, ops ...SessionOption) ([]spec.Pipeline, error) {
+func (client *Client) ListPipelinesByIDs(pipelineIDs []uint64, needQueryDefinition bool, ops ...mysqlxorm.SessionOption) ([]spec.Pipeline, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 

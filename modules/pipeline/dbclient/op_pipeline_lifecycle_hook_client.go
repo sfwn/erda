@@ -14,6 +14,10 @@
 
 package dbclient
 
+import (
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
+)
+
 type PipelineLifecycleHookClient struct {
 	ID     uint64 `json:"id" xorm:"pk autoincr"`
 	Name   string `json:"name"`
@@ -25,9 +29,11 @@ func (ps *PipelineLifecycleHookClient) TableName() string {
 	return "dice_pipeline_lifecycle_hook_clients"
 }
 
-func (client *Client) FindLifecycleHookClientList() (clients []*PipelineLifecycleHookClient, err error) {
+func (client *Client) FindLifecycleHookClientList(ops ...mysqlxorm.SessionOption) (clients []*PipelineLifecycleHookClient, err error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 
-	err = client.Find(&clients)
+	err = session.Find(&clients)
 	if err != nil {
 		return nil, err
 	}

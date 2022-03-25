@@ -21,13 +21,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 )
 
 // GetPipelineEvents get pipeline events from reports.
 // return: report, events, error
-func (client *Client) GetPipelineEvents(pipelineID uint64, ops ...SessionOption) (*spec.PipelineReport, []*apistructs.PipelineEvent, error) {
+func (client *Client) GetPipelineEvents(pipelineID uint64, ops ...mysqlxorm.SessionOption) (*spec.PipelineReport, []*apistructs.PipelineEvent, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -59,7 +60,7 @@ func (client *Client) GetPipelineEvents(pipelineID uint64, ops ...SessionOption)
 	return &report, events, nil
 }
 
-func (client *Client) AppendPipelineEvent(pipelineID uint64, newEvents []*apistructs.PipelineEvent, ops ...SessionOption) error {
+func (client *Client) AppendPipelineEvent(pipelineID uint64, newEvents []*apistructs.PipelineEvent, ops ...mysqlxorm.SessionOption) error {
 	if len(newEvents) == 0 {
 		return nil
 	}

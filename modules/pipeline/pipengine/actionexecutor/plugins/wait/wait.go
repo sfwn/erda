@@ -31,7 +31,7 @@ import (
 var Kind = types.Kind(spec.PipelineTaskExecutorKindWait)
 
 func init() {
-	types.MustRegister(Kind, func(name types.Name, options map[string]string) (types.ActionExecutor, error) {
+	types.MustRegister(Kind, func(name types.Name, options map[string]string, injectedFields types.CreateFnInjectedFields) (types.ActionExecutor, error) {
 		return &Wait{
 			name:    name,
 			options: options,

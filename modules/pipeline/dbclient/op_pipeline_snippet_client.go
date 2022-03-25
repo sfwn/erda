@@ -14,6 +14,10 @@
 
 package dbclient
 
+import (
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
+)
+
 type DicePipelineSnippetClient struct {
 	ID    uint64                     `json:"id" xorm:"pk autoincr"`
 	Name  string                     `json:"name"`
@@ -29,9 +33,11 @@ type PipelineSnippetClientExtra struct {
 	UrlPathPrefix string `json:"urlPathPrefix"`
 }
 
-func (client *Client) FindSnippetClientList() (clients []*DicePipelineSnippetClient, err error) {
+func (client *Client) FindSnippetClientList(ops ...mysqlxorm.SessionOption) (clients []*DicePipelineSnippetClient, err error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 
-	err = client.Find(&clients)
+	err = session.Find(&clients)
 	if err != nil {
 		return nil, err
 	}

@@ -17,13 +17,14 @@ package dbclient
 import (
 	"fmt"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	definitiondb "github.com/erda-project/erda/modules/pipeline/providers/definition/db"
 	sourcedb "github.com/erda-project/erda/modules/pipeline/providers/source/db"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 )
 
-func (client *Client) ListPipelineBasesByIDs(pipelineIDs []uint64, ops ...SessionOption) (map[uint64]spec.PipelineBase, error) {
+func (client *Client) ListPipelineBasesByIDs(pipelineIDs []uint64, ops ...mysqlxorm.SessionOption) (map[uint64]spec.PipelineBase, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -38,7 +39,7 @@ func (client *Client) ListPipelineBasesByIDs(pipelineIDs []uint64, ops ...Sessio
 	return basesMap, nil
 }
 
-func (client *Client) ListPipelineBaseWithDefinitionByIDs(pipelineIDs []uint64, ops ...SessionOption) (map[uint64]spec.PipelineBaseWithDefinition, error) {
+func (client *Client) ListPipelineBaseWithDefinitionByIDs(pipelineIDs []uint64, ops ...mysqlxorm.SessionOption) (map[uint64]spec.PipelineBaseWithDefinition, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -56,7 +57,7 @@ func (client *Client) ListPipelineBaseWithDefinitionByIDs(pipelineIDs []uint64, 
 	return basesMap, nil
 }
 
-func (client *Client) CreatePipelineBase(base *spec.PipelineBase, ops ...SessionOption) error {
+func (client *Client) CreatePipelineBase(base *spec.PipelineBase, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -64,7 +65,7 @@ func (client *Client) CreatePipelineBase(base *spec.PipelineBase, ops ...Session
 	return err
 }
 
-func (client *Client) UpdatePipelineBase(id uint64, base *spec.PipelineBase, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineBase(id uint64, base *spec.PipelineBase, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -72,7 +73,7 @@ func (client *Client) UpdatePipelineBase(id uint64, base *spec.PipelineBase, ops
 	return err
 }
 
-func (client *Client) GetPipelineBase(id uint64, ops ...SessionOption) (spec.PipelineBase, bool, error) {
+func (client *Client) GetPipelineBase(id uint64, ops ...mysqlxorm.SessionOption) (spec.PipelineBase, bool, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -84,7 +85,7 @@ func (client *Client) GetPipelineBase(id uint64, ops ...SessionOption) (spec.Pip
 	return base, found, nil
 }
 
-func (client *Client) GetPipelineStatus(id uint64, ops ...SessionOption) (apistructs.PipelineStatus, error) {
+func (client *Client) GetPipelineStatus(id uint64, ops ...mysqlxorm.SessionOption) (apistructs.PipelineStatus, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -99,7 +100,7 @@ func (client *Client) GetPipelineStatus(id uint64, ops ...SessionOption) (apistr
 	return base.Status, nil
 }
 
-func (client *Client) UpdatePipelineBaseStatus(id uint64, status apistructs.PipelineStatus, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineBaseStatus(id uint64, status apistructs.PipelineStatus, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 

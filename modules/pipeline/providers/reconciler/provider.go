@@ -60,7 +60,7 @@ type config struct {
 }
 
 func (r *provider) Init(ctx servicehub.Context) error {
-	r.dbClient = &dbclient.Client{Engine: r.MySQL.DB()}
+	r.dbClient = dbclient.MustNew(r.MySQL)
 	r.bdl = bundle.New(bundle.WithAllAvailableClients())
 	return nil
 }

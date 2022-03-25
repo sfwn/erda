@@ -19,15 +19,15 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/commonutil/statusutil"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 	"github.com/erda-project/erda/pkg/retry"
 )
 
-func (client *Client) CreatePipelineTask(pt *spec.PipelineTask, ops ...SessionOption) (err error) {
+func (client *Client) CreatePipelineTask(pt *spec.PipelineTask, ops ...mysqlxorm.SessionOption) (err error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -100,9 +100,11 @@ func (client *Client) FindCauseFailedPipelineTasks(pipelineID uint64) (spec.Reru
 	}, nil
 }
 
-func (client *Client) GetPipelineTask(id interface{}) (spec.PipelineTask, error) {
+func (client *Client) GetPipelineTask(id interface{}, ops ...mysqlxorm.SessionOption) (spec.PipelineTask, error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 	var pa spec.PipelineTask
-	exist, err := client.ID(id).Get(&pa)
+	exist, err := session.ID(id).Get(&pa)
 	if err != nil {
 		return spec.PipelineTask{}, errors.Wrapf(err, "failed to get pipeline task by id [%v]", id)
 	}
@@ -112,12 +114,14 @@ func (client *Client) GetPipelineTask(id interface{}) (spec.PipelineTask, error)
 	return pa, nil
 }
 
-func (client *Client) FindPipelineTaskByName(pipelineID uint64, name string) (spec.PipelineTask, error) {
+func (client *Client) FindPipelineTaskByName(pipelineID uint64, name string, ops ...mysqlxorm.SessionOption) (spec.PipelineTask, error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 	var pa = spec.PipelineTask{
 		PipelineID: pipelineID,
 		Name:       name,
 	}
-	exist, err := client.Get(&pa)
+	exist, err := session.Get(&pa)
 	if err != nil {
 		return spec.PipelineTask{}, errors.Wrapf(err, "failed to get pipeline task, pipelineID [%d], name [%s]", pipelineID, name)
 	}
@@ -127,15 +131,17 @@ func (client *Client) FindPipelineTaskByName(pipelineID uint64, name string) (sp
 	return pa, nil
 }
 
-func (client *Client) ListPipelineTasksByStageID(stageID uint64) ([]*spec.PipelineTask, error) {
+func (client *Client) ListPipelineTasksByStageID(stageID uint64, ops ...mysqlxorm.SessionOption) ([]*spec.PipelineTask, error) {
+	session := client.NewSession(ops...)
+	defer session.Close()
 	var actions []*spec.PipelineTask
-	if err := client.Find(&actions, spec.PipelineTask{StageID: stageID}); err != nil {
+	if err := session.Find(&actions, spec.PipelineTask{StageID: stageID}); err != nil {
 		return nil, errors.Wrapf(err, "failed to list pipeline tasks by stageID [%d]", stageID)
 	}
 	return actions, nil
 }
 
-func (client *Client) ListPipelineTasksByPipelineID(pipelineID uint64, ops ...SessionOption) ([]spec.PipelineTask, error) {
+func (client *Client) ListPipelineTasksByPipelineID(pipelineID uint64, ops ...mysqlxorm.SessionOption) ([]spec.PipelineTask, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -146,8 +152,10 @@ func (client *Client) ListPipelineTasksByPipelineID(pipelineID uint64, ops ...Se
 	return tasks, nil
 }
 
-func (client *Client) UpdatePipelineTaskMetadata(id uint64, result *apistructs.PipelineTaskResult) error {
-	_, err := client.ID(id).Cols("result").Update(&spec.PipelineTask{Result: result})
+func (client *Client) UpdatePipelineTaskMetadata(id uint64, result *apistructs.PipelineTaskResult, ops ...mysqlxorm.SessionOption) error {
+	session := client.NewSession(ops...)
+	defer session.Close()
+	_, err := session.ID(id).Cols("result").Update(&spec.PipelineTask{Result: result})
 	if err != nil {
 		b, _ := json.Marshal(&result)
 		return errors.Errorf("failed to update pipeline task result, taskID: %d, result: %s, err: %v", id, string(b), err)
@@ -155,8 +163,10 @@ func (client *Client) UpdatePipelineTaskMetadata(id uint64, result *apistructs.P
 	return nil
 }
 
-func (client *Client) UpdatePipelineTaskInspect(id uint64, inspect apistructs.PipelineTaskInspect) error {
-	_, err := client.ID(id).Cols("inspect").Update(&spec.PipelineTask{Inspect: inspect})
+func (client *Client) UpdatePipelineTaskInspect(id uint64, inspect apistructs.PipelineTaskInspect, ops ...mysqlxorm.SessionOption) error {
+	session := client.NewSession(ops...)
+	defer session.Close()
+	_, err := session.ID(id).Cols("inspect").Update(&spec.PipelineTask{Inspect: inspect})
 	if err != nil {
 		b, _ := json.Marshal(&inspect)
 		return errors.Errorf("failed to update pipeline task inspect, taskID: %d, inspect: %s, err: %v", id, string(b), err)
@@ -164,33 +174,14 @@ func (client *Client) UpdatePipelineTaskInspect(id uint64, inspect apistructs.Pi
 	return nil
 }
 
-func (client *Client) UpdatePipelineTask(id uint64, task *spec.PipelineTask, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineTask(id uint64, task *spec.PipelineTask, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
-
-	const maxRetryNum = 3
-	retryNum := 0
-
-	for {
-		affectedRows, err := client.ID(id).Update(task)
-		if err != nil {
-			return err
-		}
-		if affectedRows == 0 && !session.AllowZeroAffectedRows {
-			if retryNum < maxRetryNum {
-				time.Sleep(time.Second * 2)
-				retryNum++
-				continue
-			}
-			logrus.Errorf("failed to update pipeline task, pipelineID: %d, taskID: %d, err: %v",
-				task.PipelineID, task.ID, ErrZeroAffectedRows)
-			return nil
-		}
-		return nil
-	}
+	_, err := session.ID(id).Update(task)
+	return err
 }
 
-func (client *Client) UpdatePipelineTaskStatus(id uint64, status apistructs.PipelineStatus, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineTaskStatus(id uint64, status apistructs.PipelineStatus, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -199,7 +190,7 @@ func (client *Client) UpdatePipelineTaskStatus(id uint64, status apistructs.Pipe
 }
 
 // UpdatePipelineTaskTime update the costTime,timeBegin and timeEnd of pipeline task
-func (client *Client) UpdatePipelineTaskTime(p *spec.Pipeline, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineTaskTime(p *spec.Pipeline, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -220,7 +211,7 @@ func (client *Client) UpdatePipelineTaskTime(p *spec.Pipeline, ops ...SessionOpt
 	return err
 }
 
-func (client *Client) UpdatePipelineTaskContext(id uint64, ctx spec.PipelineTaskContext, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineTaskContext(id uint64, ctx spec.PipelineTaskContext, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -228,7 +219,7 @@ func (client *Client) UpdatePipelineTaskContext(id uint64, ctx spec.PipelineTask
 	return err
 }
 
-func (client *Client) UpdatePipelineTaskExtra(id uint64, extra spec.PipelineTaskExtra, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineTaskExtra(id uint64, extra spec.PipelineTaskExtra, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -245,15 +236,7 @@ func (client *Client) RefreshPipelineTask(task *spec.PipelineTask) error {
 	return nil
 }
 
-func (client *Client) ListPipelineTasksByTypeStatuses(typ string, statuses ...apistructs.PipelineStatus) ([]spec.PipelineTask, error) {
-	var actionList []spec.PipelineTask
-	if err := client.Where("type = ?", typ).In("status", statuses).Find(&actionList); err != nil {
-		return nil, err
-	}
-	return actionList, nil
-}
-
-func (client *Client) DeletePipelineTasksByPipelineID(pipelineID uint64, ops ...SessionOption) error {
+func (client *Client) DeletePipelineTasksByPipelineID(pipelineID uint64, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -263,7 +246,7 @@ func (client *Client) DeletePipelineTasksByPipelineID(pipelineID uint64, ops ...
 	}, 3, time.Second)
 }
 
-func (client *Client) CleanPipelineTaskResult(id uint64, ops ...SessionOption) error {
+func (client *Client) CleanPipelineTaskResult(id uint64, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 

@@ -46,7 +46,7 @@ type provider struct {
 
 func (p *provider) Init(ctx servicehub.Context) error {
 	p.pipelineIDsChan = make(chan uint64, p.Cfg.Concurrency)
-	p.dbClient = &dbclient.Client{Engine: p.MySQL.DB()}
+	p.dbClient = dbclient.MustNew(p.MySQL)
 
 	return nil
 }

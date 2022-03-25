@@ -19,12 +19,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/erda-project/erda/apistructs"
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 	"github.com/erda-project/erda/pkg/retry"
 )
 
-func (client *Client) CreatePipelineStage(ps *spec.PipelineStage, ops ...SessionOption) (err error) {
+func (client *Client) CreatePipelineStage(ps *spec.PipelineStage, ops ...mysqlxorm.SessionOption) (err error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -32,7 +32,7 @@ func (client *Client) CreatePipelineStage(ps *spec.PipelineStage, ops ...Session
 	return err
 }
 
-func (client *Client) GetPipelineStage(id interface{}, ops ...SessionOption) (spec.PipelineStage, error) {
+func (client *Client) GetPipelineStage(id interface{}, ops ...mysqlxorm.SessionOption) (spec.PipelineStage, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 	var stage spec.PipelineStage
@@ -46,7 +46,7 @@ func (client *Client) GetPipelineStage(id interface{}, ops ...SessionOption) (sp
 	return stage, nil
 }
 
-func (client *Client) GetPipelineStageWithPreStatus(id interface{}, ops ...SessionOption) (spec.PipelineStage, error) {
+func (client *Client) GetPipelineStageWithPreStatus(id interface{}, ops ...mysqlxorm.SessionOption) (spec.PipelineStage, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 	stage, err := client.GetPipelineStage(id, ops...)
@@ -63,14 +63,16 @@ func (client *Client) GetPipelineStageWithPreStatus(id interface{}, ops ...Sessi
 	return stage, nil
 }
 
-func (client *Client) UpdatePipelineStage(id interface{}, stage *spec.PipelineStage) error {
-	if _, err := client.ID(id).AllCols().Update(stage); err != nil {
+func (client *Client) UpdatePipelineStage(id interface{}, stage *spec.PipelineStage, ops ...mysqlxorm.SessionOption) error {
+	session := client.NewSession(ops...)
+	defer session.Close()
+	if _, err := session.ID(id).AllCols().Update(stage); err != nil {
 		return errors.Wrapf(err, "failed to update stage, id [%v]", id)
 	}
 	return nil
 }
 
-func (client *Client) ListPipelineStageByPipelineID(pipelineID uint64, ops ...SessionOption) ([]spec.PipelineStage, error) {
+func (client *Client) ListPipelineStageByPipelineID(pipelineID uint64, ops ...mysqlxorm.SessionOption) ([]spec.PipelineStage, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 	var stageList []spec.PipelineStage
@@ -80,22 +82,7 @@ func (client *Client) ListPipelineStageByPipelineID(pipelineID uint64, ops ...Se
 	return stageList, nil
 }
 
-func (client *Client) ListPipelineStageByStatuses(statuses ...apistructs.PipelineStatus) ([]spec.PipelineStage, error) {
-	var stageList []spec.PipelineStage
-	if err := client.In("status", statuses).Find(&stageList); err != nil {
-		return nil, err
-	}
-	for i, stage := range stageList {
-		tmp, err := client.GetPipelineStageWithPreStatus(stage.ID)
-		if err != nil {
-			return nil, err
-		}
-		stageList[i] = tmp
-	}
-	return stageList, nil
-}
-
-func (client *Client) DeletePipelineStagesByPipelineID(pipelineID uint64, ops ...SessionOption) error {
+func (client *Client) DeletePipelineStagesByPipelineID(pipelineID uint64, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 

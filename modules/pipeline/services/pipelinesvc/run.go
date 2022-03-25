@@ -227,7 +227,7 @@ func getRealRunParams(runParams []apistructs.PipelineRunParam, yml string) (resu
 
 func (s *PipelineSvc) stopRunningPipelines(p *spec.Pipeline, identityInfo apistructs.IdentityInfo) error {
 	var runningPipelineIDs []uint64
-	err := s.dbClient.Table(&spec.PipelineBase{}).
+	err := s.dbClient.DB().Table(&spec.PipelineBase{}).
 		Select("id").In("status", apistructs.ReconcilerRunningStatuses()).
 		Where("is_snippet = ?", false).
 		Find(&runningPipelineIDs, &spec.PipelineBase{
@@ -261,7 +261,7 @@ func (s *PipelineSvc) limitParallelRunningPipelines(p *spec.Pipeline) error {
 		return nil
 	}
 	var runningPipelineIDs []uint64
-	err := s.dbClient.Table(&spec.PipelineBase{}).
+	err := s.dbClient.DB().Table(&spec.PipelineBase{}).
 		Select("id").In("status", apistructs.ReconcilerRunningStatuses()).
 		Where("is_snippet = ?", false).
 		Find(&runningPipelineIDs, &spec.PipelineBase{

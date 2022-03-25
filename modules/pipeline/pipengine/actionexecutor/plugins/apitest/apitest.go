@@ -180,15 +180,11 @@ func (d *define) makeRunningApiKey(task *spec.PipelineTask) string {
 }
 
 func init() {
-	types.MustRegister(Kind, func(name types.Name, options map[string]string) (types.ActionExecutor, error) {
-		dbClient, err := dbclient.New()
-		if err != nil {
-			return nil, fmt.Errorf("failed to init dbclient, err: %v", err)
-		}
+	types.MustRegister(Kind, func(name types.Name, options map[string]string, injectedFields types.CreateFnInjectedFields) (types.ActionExecutor, error) {
 		return &define{
 			name:        name,
 			options:     options,
-			dbClient:    dbClient,
+			dbClient:    dbclient.MustNew(injectedFields.MySQL),
 			runningAPIs: sync.Map{},
 		}, nil
 	})

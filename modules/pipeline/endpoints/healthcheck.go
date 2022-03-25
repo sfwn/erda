@@ -24,7 +24,7 @@ import (
 
 func (e *Endpoints) healthCheck(ctx context.Context, r *http.Request, vars map[string]string) (
 	httpserver.Responser, error) {
-	_, err := e.dbClient.Exec("select 1")
+	_, err := e.dbClient.DB().Exec("select 1")
 	if err != nil {
 		return apierrors.ErrPipelineHealthCheck.InternalError(err).ToResp(), nil
 	}

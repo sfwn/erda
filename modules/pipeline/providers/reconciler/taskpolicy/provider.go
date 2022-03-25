@@ -39,7 +39,7 @@ type provider struct {
 }
 
 func (p *provider) Init(ctx servicehub.Context) error {
-	p.dbClient = &dbclient.Client{Engine: p.MySQL.DB()}
+	p.dbClient = dbclient.MustNew(p.MySQL)
 	p.supportedPolicies = map[apistructs.PolicyType]Interface{
 		apistructs.TryLatestSuccessResultPolicyType: tryLastSuccessResult{p: p},
 		apistructs.NewRunPolicyType:                 newRun{p: p},

@@ -17,10 +17,11 @@ package dbclient
 import (
 	"github.com/pkg/errors"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 )
 
-func (client *Client) GetPipelineExtraByPipelineID(pipelineID uint64, ops ...SessionOption) (spec.PipelineExtra, bool, error) {
+func (client *Client) GetPipelineExtraByPipelineID(pipelineID uint64, ops ...mysqlxorm.SessionOption) (spec.PipelineExtra, bool, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -30,7 +31,7 @@ func (client *Client) GetPipelineExtraByPipelineID(pipelineID uint64, ops ...Ses
 	return extra, found, err
 }
 
-func (client *Client) CreatePipelineExtra(extra *spec.PipelineExtra, ops ...SessionOption) error {
+func (client *Client) CreatePipelineExtra(extra *spec.PipelineExtra, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -38,7 +39,7 @@ func (client *Client) CreatePipelineExtra(extra *spec.PipelineExtra, ops ...Sess
 	return err
 }
 
-func (client *Client) UpdatePipelineExtraByPipelineID(pipelineID uint64, extra *spec.PipelineExtra, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineExtraByPipelineID(pipelineID uint64, extra *spec.PipelineExtra, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -46,7 +47,7 @@ func (client *Client) UpdatePipelineExtraByPipelineID(pipelineID uint64, extra *
 	return err
 }
 
-func (client *Client) UpdatePipelineExtraExtraInfoByPipelineID(pipelineID uint64, extraInfo spec.PipelineExtraInfo, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineExtraExtraInfoByPipelineID(pipelineID uint64, extraInfo spec.PipelineExtraInfo, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -66,7 +67,7 @@ func (client *Client) UpdatePipelineExtraExtraInfoByPipelineID(pipelineID uint64
 	return err
 }
 
-func (client *Client) ListPipelineExtrasByPipelineIDs(pipelineIDs []uint64, ops ...SessionOption) (map[uint64]spec.PipelineExtra, error) {
+func (client *Client) ListPipelineExtrasByPipelineIDs(pipelineIDs []uint64, ops ...mysqlxorm.SessionOption) (map[uint64]spec.PipelineExtra, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -81,7 +82,7 @@ func (client *Client) ListPipelineExtrasByPipelineIDs(pipelineIDs []uint64, ops 
 	return extrasMap, nil
 }
 
-func (client *Client) UpdatePipelineProgress(pipelineID uint64, progress int, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineProgress(pipelineID uint64, progress int, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -89,7 +90,7 @@ func (client *Client) UpdatePipelineProgress(pipelineID uint64, progress int, op
 	return err
 }
 
-func (client *Client) UpdatePipelineExtraSnapshot(pipelineID uint64, snapshot spec.Snapshot, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineExtraSnapshot(pipelineID uint64, snapshot spec.Snapshot, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 

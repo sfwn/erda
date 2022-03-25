@@ -61,9 +61,9 @@ func (q *provider) Init(ctx servicehub.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to init etcd client, err: %v", err)
 	}
-	q.dbClient = &dbclient.Client{Engine: q.MySQL.DB()}
+	q.dbClient = dbclient.MustNew(q.MySQL)
 	q.QueueManager = manager.New(ctx,
-		manager.WithDBClient(&dbclient.Client{Engine: q.MySQL.DB()}),
+		manager.WithDBClient(dbclient.MustNew(q.MySQL)),
 		manager.WithEtcdClient(etcdClient),
 		manager.WithJsonStore(js),
 	)

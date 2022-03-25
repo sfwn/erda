@@ -16,9 +16,11 @@ package dbclient
 
 import (
 	"fmt"
+
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 )
 
-func (client *Client) DeletePipelineRelated(pipelineID uint64, ops ...SessionOption) error {
+func (client *Client) DeletePipelineRelated(pipelineID uint64, ops ...mysqlxorm.SessionOption) error {
 	// 获取 pipeline
 	p, err := client.GetPipeline(pipelineID, ops...)
 	if err != nil {

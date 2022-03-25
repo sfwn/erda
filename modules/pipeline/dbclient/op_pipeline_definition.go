@@ -17,10 +17,11 @@ package dbclient
 import (
 	"fmt"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/modules/pipeline/providers/definition/db"
 )
 
-func (client *Client) GetPipelineDefinition(id string, ops ...SessionOption) (*db.PipelineDefinition, error) {
+func (client *Client) GetPipelineDefinition(id string, ops ...mysqlxorm.SessionOption) (*db.PipelineDefinition, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -38,7 +39,7 @@ func (client *Client) GetPipelineDefinition(id string, ops ...SessionOption) (*d
 	return &pipelineDefinition, nil
 }
 
-func (client *Client) GetPipelineDefinitionByPipelineID(pipelineID uint64, ops ...SessionOption) (*db.PipelineDefinition, bool, error) {
+func (client *Client) GetPipelineDefinitionByPipelineID(pipelineID uint64, ops ...mysqlxorm.SessionOption) (*db.PipelineDefinition, bool, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -56,7 +57,7 @@ func (client *Client) GetPipelineDefinitionByPipelineID(pipelineID uint64, ops .
 	return &pipelineDefinition, true, nil
 }
 
-func (client *Client) UpdatePipelineDefinition(id string, pipelineDefinition *db.PipelineDefinition, ops ...SessionOption) error {
+func (client *Client) UpdatePipelineDefinition(id string, pipelineDefinition *db.PipelineDefinition, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -64,7 +65,7 @@ func (client *Client) UpdatePipelineDefinition(id string, pipelineDefinition *db
 	return err
 }
 
-func (client *Client) IncreaseExecutedActionNum(id string, ops ...SessionOption) error {
+func (client *Client) IncreaseExecutedActionNum(id string, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 	sql := `update pipeline_definition set executed_action_num = IF(executed_action_num<0,1,executed_action_num + 1) where id = ? AND soft_deleted_at = 0`

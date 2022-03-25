@@ -90,10 +90,7 @@ func (p *provider) do() error {
 	metrics.Initialize(p.MetricReport)
 
 	// db client
-	dbClient, err := dbclient.New()
-	if err != nil {
-		return err
-	}
+	dbClient := dbclient.MustNew(p.MySQL)
 
 	// queryStringDecoder
 	queryStringDecoder := schema.NewDecoder()

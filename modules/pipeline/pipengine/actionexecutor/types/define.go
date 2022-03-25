@@ -22,7 +22,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
+	"github.com/erda-project/erda/bundle"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 )
 
@@ -120,7 +122,12 @@ func (s Kind) GetClusterNameByExecutorName(executorName Name) (string, error) {
 }
 
 // Create be used to create an action executor instance.
-type CreateFn func(name Name, options map[string]string) (ActionExecutor, error)
+type CreateFn func(name Name, options map[string]string, injectedFields CreateFnInjectedFields) (ActionExecutor, error)
+
+type CreateFnInjectedFields struct {
+	MySQL mysqlxorm.Interface
+	Bdl   *bundle.Bundle
+}
 
 var Factory = map[Kind]CreateFn{}
 

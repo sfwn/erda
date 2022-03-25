@@ -21,19 +21,22 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/spec"
 	"github.com/erda-project/erda/pkg/retry"
 	"github.com/erda-project/erda/pkg/strutil"
 )
 
-func (client *Client) GetLabel(id uint64) (label *spec.PipelineLabel, err error) {
+func (client *Client) GetLabel(id uint64, ops ...mysqlxorm.SessionOption) (label *spec.PipelineLabel, err error) {
 	defer func() {
 		if err != nil {
 			err = errors.Wrapf(err, "failed to get pipeline label by id: %v", id)
 		}
 	}()
-	found, err := client.ID(id).Get(label)
+	session := client.NewSession(ops...)
+	defer session.Close()
+	found, err := session.ID(id).Get(label)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +46,7 @@ func (client *Client) GetLabel(id uint64) (label *spec.PipelineLabel, err error)
 	return label, nil
 }
 
-func (client *Client) BatchInsertLabels(labels []spec.PipelineLabel, ops ...SessionOption) (err error) {
+func (client *Client) BatchInsertLabels(labels []spec.PipelineLabel, ops ...mysqlxorm.SessionOption) (err error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 	defer func() { err = errors.Wrap(err, "failed to create pipeline label") }()
@@ -51,7 +54,7 @@ func (client *Client) BatchInsertLabels(labels []spec.PipelineLabel, ops ...Sess
 	return err
 }
 
-func (client *Client) CreatePipelineLabels(p *spec.Pipeline, ops ...SessionOption) (err error) {
+func (client *Client) CreatePipelineLabels(p *spec.Pipeline, ops ...mysqlxorm.SessionOption) (err error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -72,7 +75,7 @@ func (client *Client) CreatePipelineLabels(p *spec.Pipeline, ops ...SessionOptio
 	return err
 }
 
-func (client *Client) ListPipelineLabels(req *apistructs.PipelineLabelListRequest, ops ...SessionOption) ([]spec.PipelineLabel, int64, error) {
+func (client *Client) ListPipelineLabels(req *apistructs.PipelineLabelListRequest, ops ...mysqlxorm.SessionOption) ([]spec.PipelineLabel, int64, error) {
 	sqlSession := client.NewSession(ops...)
 	defer sqlSession.Close()
 
@@ -104,7 +107,7 @@ func (client *Client) ListPipelineLabels(req *apistructs.PipelineLabelListReques
 }
 
 // ListLabelsByPipelineID 根据 pipelineID 获取 labels
-func (client *Client) ListLabelsByPipelineID(pipelineID uint64, ops ...SessionOption) ([]spec.PipelineLabel, error) {
+func (client *Client) ListLabelsByPipelineID(pipelineID uint64, ops ...mysqlxorm.SessionOption) ([]spec.PipelineLabel, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -115,7 +118,7 @@ func (client *Client) ListLabelsByPipelineID(pipelineID uint64, ops ...SessionOp
 	return labels, nil
 }
 
-func (client *Client) SelectTargetIDsByLabels(req apistructs.TargetIDSelectByLabelRequest, ops ...SessionOption) (targetIDs []uint64, err error) {
+func (client *Client) SelectTargetIDsByLabels(req apistructs.TargetIDSelectByLabelRequest, ops ...mysqlxorm.SessionOption) (targetIDs []uint64, err error) {
 	defer func() {
 		if err != nil {
 			err = errors.Errorf("failed to get targetIDs match by labels, req: %+v, err: %v", req, err)
@@ -228,7 +231,7 @@ func (client *Client) SelectTargetIDsByLabels(req apistructs.TargetIDSelectByLab
 	return targetIDs, nil
 }
 
-func (client *Client) DeletePipelineLabelsByPipelineID(pipelineID uint64, ops ...SessionOption) error {
+func (client *Client) DeletePipelineLabelsByPipelineID(pipelineID uint64, ops ...mysqlxorm.SessionOption) error {
 	session := client.NewSession(ops...)
 	defer session.Close()
 
@@ -324,7 +327,7 @@ func questionMarks(length int) string {
 	return strutil.Join(result, ",")
 }
 
-func (client *Client) ListPipelineLabelsByTypeAndTargetIDs(_type apistructs.PipelineLabelType, targetIDs []uint64, ops ...SessionOption) (map[uint64][]spec.PipelineLabel, error) {
+func (client *Client) ListPipelineLabelsByTypeAndTargetIDs(_type apistructs.PipelineLabelType, targetIDs []uint64, ops ...mysqlxorm.SessionOption) (map[uint64][]spec.PipelineLabel, error) {
 	session := client.NewSession(ops...)
 	defer session.Close()
 

@@ -48,7 +48,7 @@ func (m *Manager) updateK8sExecutor(cluster apistructs.ClusterInfo) error {
 	m.Unlock()
 	for kind, createFn := range k8sFactory {
 		name := kind.MakeK8sKindExecutorName(cluster.Name)
-		actionExecutor, err := createFn(name, nil)
+		actionExecutor, err := createFn(name, nil, m.injectedFields)
 		if err != nil {
 			return errors.Errorf("executor [%s] created failed, err: %v", name, err)
 		}

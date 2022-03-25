@@ -17,6 +17,7 @@ package buildcachesvc
 import (
 	"time"
 
+	"github.com/erda-project/erda-infra/providers/mysqlxorm"
 	"github.com/erda-project/erda/apistructs"
 	"github.com/erda-project/erda/modules/pipeline/dbclient"
 	"github.com/erda-project/erda/modules/pipeline/services/apierrors"
@@ -33,15 +34,18 @@ func New(dbClient *dbclient.Client) *BuildCacheSvc {
 	return &s
 }
 
-func (s *BuildCacheSvc) Report(req *apistructs.BuildCacheImageReportRequest, cache *spec.CIV3BuildCache) error {
-	success, err := s.dbClient.Get(cache)
+func (s *BuildCacheSvc) Report(req *apistructs.BuildCacheImageReportRequest, cache *spec.CIV3BuildCache, ops ...mysqlxorm.SessionOption) error {
+	session := s.dbClient.NewSession(ops...)
+	defer session.Close()
+
+	success, err := session.Get(cache)
 	if err != nil {
 		return apierrors.ErrReportBuildCache.InternalError(err)
 	}
 	if req.Action == "push" {
 		// 不存在添加,存在不处理
 		if !success {
-			if _, err = s.dbClient.Insert(cache); err != nil {
+			if _, err = session.Insert(cache); err != nil {
 				return apierrors.ErrReportBuildCache.InternalError(err)
 			}
 		}
@@ -50,7 +54,7 @@ func (s *BuildCacheSvc) Report(req *apistructs.BuildCacheImageReportRequest, cac
 		// 存在更新时间,不存在不处理
 		if success {
 			cache.LastPullAt = time.Now()
-			if _, err = s.dbClient.ID(cache.ID).Update(cache); err != nil {
+			if _, err = session.ID(cache.ID).Update(cache); err != nil {
 				return apierrors.ErrReportBuildCache.InternalError(err)
 			}
 		}

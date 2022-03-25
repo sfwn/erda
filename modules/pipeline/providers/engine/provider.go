@@ -22,8 +22,10 @@ import (
 	"github.com/erda-project/erda-infra/base/logs"
 	"github.com/erda-project/erda-infra/base/servicehub"
 	"github.com/erda-project/erda-infra/providers/mysqlxorm"
+	"github.com/erda-project/erda/bundle"
 	"github.com/erda-project/erda/modules/pipeline/dbclient"
 	"github.com/erda-project/erda/modules/pipeline/pipengine/actionexecutor"
+	"github.com/erda-project/erda/modules/pipeline/pipengine/actionexecutor/types"
 	"github.com/erda-project/erda/modules/pipeline/providers/clusterinfo"
 	"github.com/erda-project/erda/modules/pipeline/providers/dispatcher"
 	"github.com/erda-project/erda/modules/pipeline/providers/leaderworker"
@@ -60,7 +62,7 @@ type provider struct {
 
 func (p *provider) Init(ctx servicehub.Context) error {
 	// dbclient
-	p.dbClient = &dbclient.Client{Engine: p.MySQL.DB()}
+	p.dbClient = dbclient.MustNew(p.MySQL)
 
 	// action executor manager
 	_, cfgChan, err := p.dbClient.ListPipelineConfigsOfActionExecutor()
@@ -69,7 +71,10 @@ func (p *provider) Init(ctx servicehub.Context) error {
 	}
 	mgr := actionexecutor.GetManager()
 	p.actionExecutorMgr = mgr
-	if err := mgr.Initialize(ctx, cfgChan, p.ClusterInfo); err != nil {
+	if err := mgr.Initialize(ctx, cfgChan, p.ClusterInfo, types.CreateFnInjectedFields{
+		MySQL: p.MySQL,
+		Bdl:   bundle.New(bundle.WithAllAvailableClients()),
+	}); err != nil {
 		return err
 	}
 
