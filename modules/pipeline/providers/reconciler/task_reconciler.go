@@ -16,6 +16,7 @@ package reconciler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/erda-project/erda-infra/base/logs"
@@ -187,22 +188,40 @@ func (tr *defaultTaskReconciler) ReconcileNormalTask(ctx context.Context, p *spe
 	var onceCorrected bool
 	var framework *taskrun.TaskRun
 
+	var executorRetryTimes int
+	var taskExecutor types.ActionExecutor
 	rutil.ContinueWorking(ctx, tr.log, func(ctx context.Context) rutil.WaitDuration {
 		// get executor
 		executor, err := actionexecutor.GetManager().Get(types.Name(task.GetExecutorName()))
 		if err != nil {
-			tr.log.Errorf("failed to get task executor(auto retry), err: %v", err)
+			tr.log.Errorf("failed to get task executor(auto retry), pipelineID: %d, taskID: %d, taskName: %s, err: %v", p.ID, task.ID, task.Name, err)
+			executorRetryTimes++
+			if executorRetryTimes > 5 {
+				msg := fmt.Sprintf("failed to get task executor(retry %d times), err: %v", executorRetryTimes, err)
+				if err := tr.dbClient.UpdatePipelineTaskStatus(task.ID, apistructs.PipelineStatusStartError); err != nil {
+					tr.log.Errorf("failed to update pipeline task (auto retry), pipelineID: %d, taskID: %d, taskName: %s, err: %v", msg, p.ID, task.ID, task.Name, err)
+					return rutil.ContinueWorkingWithDefaultInterval
+				}
+				task.Inspect.Errors = task.Inspect.AppendError(&apistructs.PipelineTaskErrResponse{Msg: msg})
+				if err := tr.dbClient.UpdatePipelineTaskInspect(task.ID, task.Inspect); err != nil {
+					tr.log.Errorf("failed to append last message(auto retry), pipelineID: %d, taskID: %d, taskName: %s, err: %v", p.ID, task.ID, task.Name, err)
+					return rutil.ContinueWorkingWithDefaultInterval
+				}
+				return rutil.ContinueWorkingAbort
+			}
 			return rutil.ContinueWorkingWithDefaultInterval
 		}
 
-		// generate framework to run task
-		framework = taskrun.New(ctx, task, executor, p, tr.bdl, tr.dbClient, tr.actionAgentSvc, tr.extMarketSvc, tr.clusterInfo)
+		taskExecutor = executor
 		return rutil.ContinueWorkingAbort
 	}, rutil.WithContinueWorkingDefaultRetryInterval(tr.defaultRetryInterval))
 
+	// generate framework to run task
+	framework = taskrun.New(ctx, task, taskExecutor, p, tr.bdl, tr.dbClient, tr.actionAgentSvc, tr.extMarketSvc, tr.clusterInfo)
+
 	rutil.ContinueWorking(ctx, tr.log, func(ctx context.Context) rutil.WaitDuration {
 		// correct
-		if !onceCorrected {
+		if !onceCorrected && framework.Executor != nil {
 			if err := tr.tryCorrectFromExecutorBeforeReconcile(ctx, p, task, framework); err != nil {
 				tr.log.Errorf("failed to correct task status from executor before run(auto retry), pipelineID: %d, taskID: %d, taskName: %s, err: %v", p.ID, task.ID, task.Name, err)
 				return rutil.ContinueWorkingWithDefaultInterval
