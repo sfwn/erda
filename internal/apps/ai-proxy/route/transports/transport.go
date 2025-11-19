@@ -18,16 +18,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/url"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/net/http/httpproxy"
 
 	"github.com/erda-project/erda/internal/apps/ai-proxy/common/ctxhelper"
 	"github.com/erda-project/erda/internal/apps/ai-proxy/route/body_util"
@@ -93,38 +88,6 @@ func (t *CurlPrinterTransport) RoundTrip(req *http.Request) (*http.Response, err
 		logger.Sub(reflect.TypeOf(t).String()).Debugf("generated cURL command:\n\t" + GenCurl(req))
 	}
 	return t.Inner.RoundTrip(req)
-}
-
-// ProxyConfig is forward proxy configuration, i.e., proxy configuration for transport outbound traffic
-var ProxyConfig = &httpproxy.Config{
-	HTTPProxy:  os.Getenv("FORWARD_HTTP_PROXY"),
-	HTTPSProxy: os.Getenv("FORWARD_HTTPS_PROXY"),
-	NoProxy:    os.Getenv("NO_PROXY"),
-	CGI:        os.Getenv("REQUEST_METHOD") != "",
-}
-
-// BaseTransport returns a basic http.RoundTripper. It checks whether the host requested by *http.Request is in the FORWARD_PROXY_HOSTS list,
-// if it is in the list, it uses ProxyConfig's proxy configuration, if not in the list, it uses the default proxy configuration http.ProxyFromEnvironment.
-var BaseTransport http.RoundTripper = &http.Transport{
-	Proxy: func(req *http.Request) (*url.URL, error) {
-		hosts := strings.Split(os.Getenv("FORWARD_PROXY_HOSTS"), ",")
-		for _, host := range hosts {
-			if req.Host == host || req.URL.Host == host {
-				return ProxyConfig.ProxyFunc()(req.URL)
-			}
-		}
-		return http.ProxyFromEnvironment(req)
-	},
-	DialContext: (&net.Dialer{
-		Timeout:   60 * time.Second,
-		KeepAlive: 60 * time.Second,
-	}).DialContext,
-	TLSHandshakeTimeout:   10 * time.Second,
-	MaxIdleConns:          100,
-	IdleConnTimeout:       90 * time.Second,
-	ExpectContinueTimeout: 1 * time.Second,
-	ForceAttemptHTTP2:     true,
-	DisableCompression:    false,
 }
 
 func GenCurl(req *http.Request) string {
